@@ -23,6 +23,11 @@
 #ifndef __I2C_BOARD_H__
 #define __I2C_BOARD_H__
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "i2c.h"
@@ -104,14 +109,34 @@ void I2cMcuResetBus( I2c_t *obj );
  *
  * \param [IN] obj              I2C object
  * \param [IN] deviceAddr       device address
+ * \param [IN] buffer           data buffer to write
+ * \param [IN] size             number of data bytes to write
+ */
+LmnStatus_t I2cMcuWriteBuffer( I2c_t *obj, uint8_t deviceAddr, uint8_t *buffer, uint16_t size );
+
+/*!
+ * \brief Read data buffer from the I2C device
+ *
+ * \param [IN] obj              I2C object
+ * \param [IN] deviceAddr       device address
+ * \param [IN] buffer           data buffer to read
+ * \param [IN] size             number of data bytes to read
+ */
+LmnStatus_t I2cMcuReadBuffer( I2c_t *obj, uint8_t deviceAddr, uint8_t *buffer, uint16_t size );
+
+/*!
+ * \brief Write data buffer starting at addr to the I2C device
+ *
+ * \param [IN] obj              I2C object
+ * \param [IN] deviceAddr       device address
  * \param [IN] addr             data address
  * \param [IN] buffer           data buffer to write
  * \param [IN] size             number of data bytes to write
  */
-uint8_t I2cMcuWriteBuffer( I2c_t *obj, uint8_t deviceAddr, uint16_t addr, uint8_t *buffer, uint16_t size );
+LmnStatus_t I2cMcuWriteMemBuffer( I2c_t *obj, uint8_t deviceAddr, uint16_t addr, uint8_t *buffer, uint16_t size );
 
 /*!
- * \brief Read data buffer from the I2C device
+ * \brief Read data buffer starting at addr from the I2C device
  *
  * \param [IN] obj              I2C object
  * \param [IN] deviceAddr       device address
@@ -119,7 +144,7 @@ uint8_t I2cMcuWriteBuffer( I2c_t *obj, uint8_t deviceAddr, uint16_t addr, uint8_
  * \param [IN] buffer           data buffer to read
  * \param [IN] size             number of data bytes to read
  */
-uint8_t I2cMcuReadBuffer( I2c_t *obj, uint8_t deviceAddr, uint16_t addr, uint8_t *buffer, uint16_t size );
+LmnStatus_t I2cMcuReadMemBuffer( I2c_t *obj, uint8_t deviceAddr, uint16_t addr, uint8_t *buffer, uint16_t size );
 
 /*!
  * \brief Waits until the given device is in standby mode
@@ -127,7 +152,7 @@ uint8_t I2cMcuReadBuffer( I2c_t *obj, uint8_t deviceAddr, uint16_t addr, uint8_t
  * \param [IN] obj              I2C object
  * \param [IN] deviceAddr       device address
  */
-uint8_t I2cMcuWaitStandbyState( I2c_t *obj, uint8_t deviceAddr );
+LmnStatus_t I2cMcuWaitStandbyState( I2c_t *obj, uint8_t deviceAddr );
 
 /*!
  * \brief Sets the internal device address size
@@ -136,5 +161,9 @@ uint8_t I2cMcuWaitStandbyState( I2c_t *obj, uint8_t deviceAddr );
  * \param [IN] addrSize         Internal address size
  */
 void I2cSetAddrSize( I2c_t *obj, I2cAddrSize addrSize );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __I2C_BOARD_H__

@@ -55,12 +55,12 @@ typedef struct LmhPackage_s
      */
     bool ( *IsInitialized )( void );
     /*!
-     * Returns the package operation status.
+     * Returns if a package transmission is pending or not.
      *
-     * \retval status Package operation status
-     *                [true: Running, false: Not running]
+     * \retval status Package transmission status
+     *                [true: pending, false: Not pending]
      */
-    bool ( *IsRunning )( void );
+    bool ( *IsTxPending )( void );
     /*!
      * Processes the internal package events.
      */
@@ -102,43 +102,45 @@ typedef struct LmhPackage_s
      *
      * \param   [IN] status      - Request returned status
      * \param   [IN] mcpsRequest - Performed MCPS-Request. Refer to \ref McpsReq_t.
+     * \param   [IN] nextTxDelay - Time to wait until another TX is possible.
      */
-    void ( *OnMacMcpsRequest )( LoRaMacStatus_t status, McpsReq_t *mcpsReq );
+    void ( *OnMacMcpsRequest )( LoRaMacStatus_t status, McpsReq_t *mcpsReq, TimerTime_t nextTxDelay );
     /*!
      * Notifies the upper layer that a MLME request has been made to the MAC layer
      *
      * \param   [IN] status      - Request returned status
      * \param   [IN] mlmeRequest - Performed MLME-Request. Refer to \ref MlmeReq_t.
+     * \param   [IN] nextTxDelay - Time to wait until another TX is possible.
      */
-    void ( *OnMacMlmeRequest )( LoRaMacStatus_t status, MlmeReq_t *mlmeReq );
+    void ( *OnMacMlmeRequest )( LoRaMacStatus_t status, MlmeReq_t *mlmeReq, TimerTime_t nextTxDelay );
     /*!
     * Join a LoRa Network in classA
     *
     * \Note if the device is ABP, this is a pass through function
-    * 
+    *
     * \param [IN] isOtaa Indicates which activation mode must be used
     */
     void ( *OnJoinRequest )( bool isOtaa );
-    /*!
-     * Instructs the MAC layer to send a ClassA uplink
-     *
-     * \param [IN] appData Data to be sent
-     * \param [IN] isTxConfirmed Indicates if the uplink requires an acknowledgement
-     *
-     * \retval status Returns \ref LORAMAC_HANDLER_SUCCESS if request has been
-     *                processed else \ref LORAMAC_HANDLER_ERROR
-     */
-    LmHandlerErrorStatus_t ( *OnSendRequest )( LmHandlerAppData_t *appData, LmHandlerMsgTypes_t isTxConfirmed );
     /*!
     * Requests network server time update
     *
     * \retval status Returns \ref LORAMAC_HANDLER_SET if joined else \ref LORAMAC_HANDLER_RESET
     */
     LmHandlerErrorStatus_t ( *OnDeviceTimeRequest )( void );
+#if( LMH_SYS_TIME_UPDATE_NEW_API == 1 )
+    /*!
+     * Notifies the upper layer that the system time has been updated.
+     *
+     * \param [in] isSynchronized Indicates if the system time is synchronized in the range +/-1 second
+     * \param [in] timeCorrection Received time correction value
+     */
+    void ( *OnSysTimeUpdate )( bool isSynchronized, int32_t timeCorrection );
+#else
     /*!
      * Notifies the upper layer that the system time has been updated.
      */
     void ( *OnSysTimeUpdate )( void );
+#endif
 }LmhPackage_t;
 
 #endif // __LMH_PACKAGE_H__

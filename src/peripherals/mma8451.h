@@ -23,7 +23,13 @@
 #ifndef __MMA8451_H__
 #define __MMA8451_H__
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
+#include "utilities.h"
 
 /*
  * MMA8451 I2C address
@@ -58,16 +64,16 @@
 /*!
  * \brief Initializes the device
  *
- * \retval status [SUCCESS, FAIL]
+ * \retval status [LMN_STATUS_OK, LMN_STATUS_ERROR]
  */
-uint8_t MMA8451Init( void );
+LmnStatus_t MMA8451Init( void );
 
 /*!
  * \brief Resets the device
  *
- * \retval status [SUCCESS, FAIL]
+ * \retval status [LMN_STATUS_OK, LMN_STATUS_ERROR]
  */
-uint8_t MMA8451Reset( void );
+LmnStatus_t MMA8451Reset( void );
 
 /*!
  * \brief Initializes the orientation detection
@@ -82,5 +88,9 @@ void MMA8451OrientDetect( void );
  *                     Other bits don't care.
  */
 uint8_t MMA8451GetOrientation( void );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __MMA8451_H__

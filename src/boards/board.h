@@ -23,6 +23,11 @@
 #ifndef __BOARD_H__
 #define __BOARD_H__
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
 #include "utilities.h"
 /*!
@@ -81,6 +86,13 @@ uint32_t BoardGetBatteryVoltage( void );
 uint8_t BoardGetBatteryLevel( void );
 
 /*!
+ * \brief Get the current MCU temperature in degree celcius * 256
+ *
+ * \retval temperature * 256
+ */
+int16_t BoardGetTemperature( void );
+
+/*!
  * Returns a pseudo random seed generated using the MCU Unique ID
  *
  * \retval seed Generated pseudo random seed
@@ -112,5 +124,9 @@ uint8_t GetBoardPowerSource( void );
  * \retval value  Version
  */
 Version_t BoardGetVersion( void );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __BOARD_H__

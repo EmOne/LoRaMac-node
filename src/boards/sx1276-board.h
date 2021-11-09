@@ -23,6 +23,11 @@
 #ifndef __SX1276_BOARD_H__
 #define __SX1276_BOARD_H__
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "sx1276/sx1276.h"
@@ -45,7 +50,8 @@
     { MODEM_FSK , REG_SYNCVALUE2         , 0x94 },\
     { MODEM_FSK , REG_SYNCVALUE3         , 0xC1 },\
     { MODEM_FSK , REG_PACKETCONFIG1      , 0xD8 },\
-    { MODEM_FSK , REG_FIFOTHRESH         , 0x8F },\
+    /* FIFO threshold set to 32 (31+1) */         \
+    { MODEM_FSK , REG_FIFOTHRESH         , 0x9F },\
     { MODEM_FSK , REG_IMAGECAL           , 0x02 },\
     { MODEM_FSK , REG_DIOMAPPING1        , 0x00 },\
     { MODEM_FSK , REG_DIOMAPPING2        , 0x30 },\
@@ -146,6 +152,13 @@ void SX1276SetBoardTcxo( uint8_t state );
 uint32_t SX1276GetBoardTcxoWakeupTime( void );
 
 /*!
+ * \brief Gets current state of DIO1 pin state (FifoLevel).
+ *
+ * \retval state DIO1 pin current state.
+ */
+uint32_t SX1276GetDio1PinState( void );
+
+/*!
  * \brief Writes new Tx debug pin state
  *
  * \param [IN] state Debug pin state
@@ -163,5 +176,9 @@ void SX1276DbgPinRxWrite( uint8_t state );
  * Radio hardware and global parameters
  */
 extern SX1276_t SX1276;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __SX1276_BOARD_H__

@@ -33,6 +33,11 @@
 #ifndef __BOARD_CONFIG_H__
 #define __BOARD_CONFIG_H__
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /*!
  * Defines the time required for the TCXO to wakeup [ms].
  */
@@ -61,6 +66,19 @@
 #define RADIO_FREQ_SEL                              PA_1
 #define RADIO_XTAL_SEL                              PB_0
 #define RADIO_DEVICE_SEL                            PA_4
+
+#define LED_1                                       PC_1
+#define LED_2                                       PC_0
+
+// Debug pins definition.
+#define RADIO_DBG_PIN_TX                            PB_6
+#define RADIO_DBG_PIN_RX                            PC_7
+
+#elif defined( LR1110MB1XXS )
+
+#define RADIO_NSS                                   PA_8
+#define RADIO_BUSY                                  PB_3
+#define RADIO_DIO_1                                 PB_4
 
 #define LED_1                                       PC_1
 #define LED_2                                       PC_0
@@ -105,5 +123,9 @@
 
 #define UART_TX                                     PA_2
 #define UART_RX                                     PA_3
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __BOARD_CONFIG_H__

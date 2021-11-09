@@ -28,12 +28,15 @@
 #include "i2c.h"
 #include "uart.h"
 #include "timer.h"
+#include "sysIrqHandlers.h"
 #include "board-config.h"
 #include "lpm-board.h"
 #include "rtc-board.h"
 
 #if defined( SX1261MBXBAS ) || defined( SX1262MBXCAS ) || defined( SX1262MBXDAS )
     #include "sx126x-board.h"
+#elif defined( LR1110MB1XXS )
+    #include "lr1110-board.h"
 #elif defined( SX1272MB2DAS)
     #include "sx1272-board.h"
 #elif defined( SX1276MB1LAS ) || defined( SX1276MB1MAS )
@@ -57,7 +60,12 @@ Gpio_t Led2;
 /*
  * MCU objects
  */
+Adc_t  Adc;
 Uart_t Uart2;
+
+#if defined( LR1110MB1XXS )
+    extern lr1110_t LR1110;
+#endif
 
 /*!
  * Initializes the unused GPIO to a know status
@@ -75,19 +83,9 @@ static void InitFlashMemoryOperations( void );
 static void SystemClockConfig( void );
 
 /*!
- * Used to measure and calibrate the system wake-up time from STOP mode
- */
-static void CalibrateSystemWakeupTime( void );
-
-/*!
  * System Clock Re-Configuration when waking up from STOP mode
  */
 static void SystemClockReConfig( void );
-
-/*!
- * Timer used at first boot to calibrate the SystemWakeupTime
- */
-static TimerEvent_t CalibrateSystemWakeupTimeTimer;
 
 /*!
  * Flag to indicate if the MCU is Initialized
@@ -107,20 +105,6 @@ static bool UsbIsConnected = false;
 
 uint8_t Uart2TxBuffer[UART2_FIFO_TX_SIZE];
 uint8_t Uart2RxBuffer[UART2_FIFO_RX_SIZE];
-
-/*!
- * Flag to indicate if the SystemWakeupTime is Calibrated
- */
-static volatile bool SystemWakeupTimeCalibrated = false;
-
-/*!
- * Callback indicating the end of the system wake-up time calibration
- */
-static void OnCalibrateSystemWakeupTimeTimerEvent( void* context )
-{
-    RtcSetMcuWakeUpTime( );
-    SystemWakeupTimeCalibrated = true;
-}
 
 void BoardCriticalSectionBegin( uint32_t *mask )
 {
@@ -174,10 +158,15 @@ void BoardInitMcu( void )
         SystemClockReConfig( );
     }
 
+    AdcInit( &Adc, NC );  // Just initialize ADC
+
 #if defined( SX1261MBXBAS ) || defined( SX1262MBXCAS ) || defined( SX1262MBXDAS )
     SpiInit( &SX126x.Spi, SPI_1, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, NC );
     SX126xIoInit( );
-#elif defined( SX1272MB2DAS)
+#elif defined( LR1110MB1XXS )
+    SpiInit( &LR1110.spi, SPI_1, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, NC );
+    lr1110_board_init_io( &LR1110 );
+#elif defined( SX1272MB2DAS )
     SpiInit( &SX1272.Spi, SPI_1, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, NC );
     SX1272IoInit( );
 #elif defined( SX1276MB1LAS ) || defined( SX1276MB1MAS )
@@ -189,19 +178,18 @@ void BoardInitMcu( void )
     {
         McuInitialized = true;
 #if defined( SX1261MBXBAS ) || defined( SX1262MBXCAS ) || defined( SX1262MBXDAS )
-        // WARNING: If necessary the TCXO control is initialized by SX126xInit function.
         SX126xIoDbgInit( );
-#elif defined( SX1272MB2DAS)
-        SX1272IoTcxoInit( );
+        // WARNING: If necessary the TCXO control is initialized by SX126xInit function.
+#elif defined( LR1110MB1XXS )
+        lr1110_board_init_dbg_io( &LR1110 );
+        // WARNING: If necessary the TCXO control is initialized by SX126xInit function.
+#elif defined( SX1272MB2DAS )
         SX1272IoDbgInit( );
+        SX1272IoTcxoInit( );
 #elif defined( SX1276MB1LAS ) || defined( SX1276MB1MAS )
-        SX1276IoTcxoInit( );
         SX1276IoDbgInit( );
+        SX1276IoTcxoInit( );
 #endif
-        if( GetBoardPowerSource( ) == BATTERY_POWER )
-        {
-            CalibrateSystemWakeupTime( );
-        }
     }
 }
 
@@ -215,10 +203,15 @@ void BoardResetMcu( void )
 
 void BoardDeInitMcu( void )
 {
+    AdcDeInit( &Adc );
+
 #if defined( SX1261MBXBAS ) || defined( SX1262MBXCAS ) || defined( SX1262MBXDAS )
     SpiDeInit( &SX126x.Spi );
     SX126xIoDeInit( );
-#elif defined( SX1272MB2DAS)
+#elif defined( LR1110MB1XXS )
+    SpiDeInit( &LR1110.spi );
+    lr1110_board_deinit_io( &LR1110 );
+#elif defined( SX1272MB2DAS )
     SpiDeInit( &SX1272.Spi );
     SX1272IoDeInit( );
 #elif defined( SX1276MB1LAS ) || defined( SX1276MB1MAS )
@@ -244,19 +237,110 @@ void BoardGetUniqueId( uint8_t *id )
     id[0] = ( ( *( uint32_t* )ID2 ) );
 }
 
-uint16_t BoardBatteryMeasureVolage( void )
+/*!
+ * Factory power supply
+ */
+#define VDDA_VREFINT_CAL ( ( uint32_t ) 3000 )  // mV
+
+/*!
+ * VREF calibration value
+ */
+#define VREFINT_CAL ( *( uint16_t* ) ( ( uint32_t ) 0x1FFF75AA ) )
+
+/*
+ * Internal temperature sensor, parameter TS_CAL1: TS ADC raw data acquired at
+ * a temperature of 110 DegC (+-5 DegC), VDDA = 3.3 V (+-10 mV).
+ */
+#define TEMP30_CAL_ADDR ( *( uint16_t* ) ( ( uint32_t ) 0x1FFF75A8 ) )
+
+/* Internal temperature sensor, parameter TS_CAL2: TS ADC raw data acquired at
+ *a temperature of  30 DegC (+-5 DegC), VDDA = 3.3 V (+-10 mV). */
+#define TEMP110_CAL_ADDR ( *( uint16_t* ) ( ( uint32_t ) 0x1FFF75CA ) )
+
+/* Vdda value with which temperature sensor has been calibrated in production
+   (+-10 mV). */
+#define VDDA_TEMP_CAL ( ( uint32_t ) 3000 )
+
+/*!
+ * Battery thresholds
+ */
+#define BATTERY_MAX_LEVEL 3000       // mV
+#define BATTERY_MIN_LEVEL 2400       // mV
+#define BATTERY_SHUTDOWN_LEVEL 2300  // mV
+
+#define BATTERY_LORAWAN_UNKNOWN_LEVEL 255
+#define BATTERY_LORAWAN_MAX_LEVEL 254
+#define BATTERY_LORAWAN_MIN_LEVEL 1
+#define BATTERY_LORAWAN_EXT_PWR 0
+
+#define COMPUTE_TEMPERATURE( TS_ADC_DATA, VDDA_APPLI )                                                          \
+    ( ( ( ( ( ( ( int32_t )( ( TS_ADC_DATA * VDDA_APPLI ) / VDDA_TEMP_CAL ) - ( int32_t ) TEMP30_CAL_ADDR ) ) * \
+            ( int32_t )( 110 - 30 ) )                                                                           \
+          << 8 ) /                                                                                              \
+        ( int32_t )( TEMP110_CAL_ADDR - TEMP30_CAL_ADDR ) ) +                                                   \
+      ( 30 << 8 ) )
+
+static uint16_t BatteryVoltage = BATTERY_MAX_LEVEL;
+
+uint16_t BoardBatteryMeasureVoltage( void )
 {
-    return 0;
+    uint16_t vref = 0;
+
+    // Read the current Voltage
+    vref = AdcReadChannel( &Adc, ADC_CHANNEL_VREFINT );
+
+    // Compute and return the Voltage in millivolt
+    return ( ( ( uint32_t ) VDDA_VREFINT_CAL * VREFINT_CAL ) / vref );
 }
 
 uint32_t BoardGetBatteryVoltage( void )
 {
-    return 0;
+    return BatteryVoltage;
 }
 
 uint8_t BoardGetBatteryLevel( void )
 {
-    return 0;
+    uint8_t batteryLevel = 0;
+
+    BatteryVoltage = BoardBatteryMeasureVoltage( );
+
+    if( GetBoardPowerSource( ) == USB_POWER )
+    {
+        batteryLevel = BATTERY_LORAWAN_EXT_PWR;
+    }
+    else
+    {
+        if( BatteryVoltage >= BATTERY_MAX_LEVEL )
+        {
+            batteryLevel = BATTERY_LORAWAN_MAX_LEVEL;
+        }
+        else if( ( BatteryVoltage > BATTERY_MIN_LEVEL ) && ( BatteryVoltage < BATTERY_MAX_LEVEL ) )
+        {
+            batteryLevel =
+                ( ( 253 * ( BatteryVoltage - BATTERY_MIN_LEVEL ) ) / ( BATTERY_MAX_LEVEL - BATTERY_MIN_LEVEL ) ) + 1;
+        }
+        else if( ( BatteryVoltage > BATTERY_SHUTDOWN_LEVEL ) && ( BatteryVoltage <= BATTERY_MIN_LEVEL ) )
+        {
+            batteryLevel = 1;
+        }
+        else  // if( BatteryVoltage <= BATTERY_SHUTDOWN_LEVEL )
+        {
+            batteryLevel = BATTERY_LORAWAN_UNKNOWN_LEVEL;
+        }
+    }
+    return batteryLevel;
+}
+
+int16_t BoardGetTemperature( void )
+{
+    uint16_t tempRaw = 0;
+
+    BatteryVoltage = BoardBatteryMeasureVoltage( );
+
+    tempRaw = AdcReadChannel( &Adc, ADC_CHANNEL_TEMPSENSOR );
+
+    // Compute and return the temperature in degree celcius * 256
+    return ( int16_t ) COMPUTE_TEMPERATURE( tempRaw, BatteryVoltage );
 }
 
 static void BoardUnusedIoInit( void )
@@ -290,7 +374,7 @@ void SystemClockConfig( void )
     RCC_OscInitStruct.PLL.PLLR            = RCC_PLLR_DIV2;
     if( HAL_RCC_OscConfig( &RCC_OscInitStruct ) != HAL_OK )
     {
-        assert_param( FAIL );
+        assert_param( LMN_STATUS_ERROR );
     }
 
     RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | 
@@ -301,14 +385,14 @@ void SystemClockConfig( void )
     RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
     if( HAL_RCC_ClockConfig( &RCC_ClkInitStruct, FLASH_LATENCY_4 ) != HAL_OK )
     {
-        assert_param( FAIL );
+        assert_param( LMN_STATUS_ERROR );
     }
 
     PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC;
     PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
     if( HAL_RCCEx_PeriphCLKConfig( &PeriphClkInit ) != HAL_OK )
     {
-        assert_param( FAIL );
+        assert_param( LMN_STATUS_ERROR );
     }
 
     HAL_SYSTICK_Config( HAL_RCC_GetHCLKFreq( ) / 1000 );
@@ -317,20 +401,6 @@ void SystemClockConfig( void )
 
     // SysTick_IRQn interrupt configuration
     HAL_NVIC_SetPriority( SysTick_IRQn, 0, 0 );
-}
-
-void CalibrateSystemWakeupTime( void )
-{
-    if( SystemWakeupTimeCalibrated == false )
-    {
-        TimerInit( &CalibrateSystemWakeupTimeTimer, OnCalibrateSystemWakeupTimeTimerEvent );
-        TimerSetValue( &CalibrateSystemWakeupTimeTimer, 1000 );
-        TimerStart( &CalibrateSystemWakeupTimeTimer );
-        while( SystemWakeupTimeCalibrated == false )
-        {
-
-        }
-    }
 }
 
 /*!
@@ -346,7 +416,7 @@ static void PVD_Config( void )
     sConfigPVD.Mode     = PWR_PVD_MODE_IT_RISING;
     if( HAL_PWR_ConfigPVD( &sConfigPVD ) != HAL_OK )
     { 
-        assert_param( FAIL );
+        assert_param( LMN_STATUS_ERROR );
     }
 
     // Enable PVD
@@ -561,6 +631,8 @@ int _read( int fd, const void *buf, size_t count )
 
 #else
 
+#include <stdio.h>
+
 // Keil compiler
 int fputc( int c, FILE *stream )
 {
@@ -595,9 +667,9 @@ int fgetc( FILE *stream )
 void assert_failed( uint8_t* file, uint32_t line )
 {
     /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %lu\r\n", file, line) */
+     ex: printf("Wrong parameters value: file %s on line %lu\n", file, line) */
 
-    printf( "Wrong parameters value: file %s on line %lu\r\n", ( const char* )file, line );
+    printf( "Wrong parameters value: file %s on line %lu\n", ( const char* )file, line );
     /* Infinite loop */
     while( 1 )
     {

@@ -30,6 +30,7 @@
 #include "i2c.h"
 #include "uart.h"
 #include "timer.h"
+#include "sysIrqHandlers.h"
 #include "board-config.h"
 #include "lpm-board.h"
 #include "rtc-board.h"
@@ -71,19 +72,9 @@ static void BoardUnusedIoInit( void );
 static void SystemClockConfig( void );
 
 /*!
- * Used to measure and calibrate the system wake-up time from STOP mode
- */
-static void CalibrateSystemWakeupTime( void );
-
-/*!
  * System Clock Re-Configuration when waking up from STOP mode
  */
 static void SystemClockReConfig( void );
-
-/*!
- * Timer used at first boot to calibrate the SystemWakeupTime
- */
-static TimerEvent_t CalibrateSystemWakeupTimeTimer;
 
 /*!
  * Flag to indicate if the MCU is Initialized
@@ -98,20 +89,6 @@ static bool McuInitialized = false;
 
 uint8_t Uart1TxBuffer[UART1_FIFO_TX_SIZE];
 uint8_t Uart1RxBuffer[UART1_FIFO_RX_SIZE];
-
-/*!
- * Flag to indicate if the SystemWakeupTime is Calibrated
- */
-static volatile bool SystemWakeupTimeCalibrated = false;
-
-/*!
- * Callback indicating the end of the system wake-up time calibration
- */
-static void OnCalibrateSystemWakeupTimeTimerEvent( void* context )
-{
-    RtcSetMcuWakeUpTime( );
-    SystemWakeupTimeCalibrated = true;
-}
 
 void BoardCriticalSectionBegin( uint32_t *mask )
 {
@@ -183,10 +160,6 @@ void BoardInitMcu( void )
         McuInitialized = true;
         SX1272IoDbgInit( );
         SX1272IoTcxoInit( );
-        if( GetBoardPowerSource( ) == BATTERY_POWER )
-        {
-            CalibrateSystemWakeupTime( );
-        }
     }
 }
 
@@ -283,7 +256,7 @@ uint8_t BoardGetPotiLevel( void )
 
 static uint16_t BatteryVoltage = BATTERY_MAX_LEVEL;
 
-uint16_t BoardBatteryMeasureVolage( void )
+uint16_t BoardBatteryMeasureVoltage( void )
 {
     uint16_t vref = 0;
     uint32_t batteryVoltage = 0;
@@ -308,7 +281,7 @@ uint8_t BoardGetBatteryLevel( void )
 {
     uint8_t batteryLevel = 0;
 
-    BatteryVoltage = BoardBatteryMeasureVolage( );
+    BatteryVoltage = BoardBatteryMeasureVoltage( );
 
     if( GetBoardPowerSource( ) == USB_POWER )
     {
@@ -363,7 +336,7 @@ void SystemClockConfig( void )
     RCC_OscInitStruct.PLL.PLLDIV     = RCC_PLLDIV_2;
     if( HAL_RCC_OscConfig( &RCC_OscInitStruct ) != HAL_OK )
     {
-        assert_param( FAIL );
+        assert_param( LMN_STATUS_ERROR );
     }
 
     RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_SYSCLK;
@@ -373,7 +346,7 @@ void SystemClockConfig( void )
     RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
     if( HAL_RCC_ClockConfig( &RCC_ClkInitStruct, FLASH_LATENCY_1 ) != HAL_OK )
     {
-        assert_param( FAIL );
+        assert_param( LMN_STATUS_ERROR );
     }
 
     PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1 | RCC_PERIPHCLK_RTC;
@@ -381,7 +354,7 @@ void SystemClockConfig( void )
     PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
     if( HAL_RCCEx_PeriphCLKConfig( &PeriphClkInit ) != HAL_OK )
     {
-        assert_param( FAIL );
+        assert_param( LMN_STATUS_ERROR );
     }
 
     HAL_SYSTICK_Config( HAL_RCC_GetHCLKFreq( ) / 1000 );
@@ -390,20 +363,6 @@ void SystemClockConfig( void )
 
     // SysTick_IRQn interrupt configuration
     HAL_NVIC_SetPriority( SysTick_IRQn, 0, 0 );
-}
-
-void CalibrateSystemWakeupTime( void )
-{
-    if( SystemWakeupTimeCalibrated == false )
-    {
-        TimerInit( &CalibrateSystemWakeupTimeTimer, OnCalibrateSystemWakeupTimeTimerEvent );
-        TimerSetValue( &CalibrateSystemWakeupTimeTimer, 1000 );
-        TimerStart( &CalibrateSystemWakeupTimeTimer );
-        while( SystemWakeupTimeCalibrated == false )
-        {
-
-        }
-    }
 }
 
 void SystemClockReConfig( void )
@@ -444,7 +403,7 @@ void SysTick_Handler( void )
 
 uint8_t GetBoardPowerSource( void )
 {
-    return BATTERY_POWER;
+    return USB_POWER;
 }
 
 /**
@@ -538,6 +497,8 @@ int _read( int fd, const void *buf, size_t count )
 
 #else
 
+#include <stdio.h>
+
 // Keil compiler
 int fputc( int c, FILE *stream )
 {
@@ -557,6 +518,9 @@ int fgetc( FILE *stream )
 #endif
 
 #ifdef USE_FULL_ASSERT
+
+#include <stdio.h>
+
 /*
  * Function Name  : assert_failed
  * Description    : Reports the name of the source file and the source line number
@@ -569,9 +533,9 @@ int fgetc( FILE *stream )
 void assert_failed( uint8_t* file, uint32_t line )
 {
     /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %lu\r\n", file, line) */
+     ex: printf("Wrong parameters value: file %s on line %lu\n", file, line) */
 
-    printf( "Wrong parameters value: file %s on line %lu\r\n", ( const char* )file, line );
+    printf( "Wrong parameters value: file %s on line %lu\n", ( const char* )file, line );
     /* Infinite loop */
     while( 1 )
     {

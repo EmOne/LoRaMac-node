@@ -37,15 +37,45 @@
 #ifndef __LORAMAC_CRYPTO_H__
 #define __LORAMAC_CRYPTO_H__
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "utilities.h"
 #include "LoRaMacTypes.h"
 #include "LoRaMacMessageTypes.h"
+#include "LoRaMacCryptoNvm.h"
 
 /*!
- * LoRaMac Cryto Status
+ * Indicates if LoRaWAN 1.1.x crypto scheme is enabled
+ */
+#define USE_LRWAN_1_1_X_CRYPTO                      1
+
+/*!
+ * Indicates if a random devnonce must be used or not
+ */
+#define USE_RANDOM_DEV_NONCE                        0
+
+/*!
+ * Indicates if JoinNonce is counter based and requires to be checked on 1.0.x devices
+ * \remark Only applies to LoRaWAN 1.0.x when following recomendations provided
+ *         by "Technical Recommendations for Preventing State Synchronization
+ *         Issues around LoRaWAN® 1.0.x Join Procedure" 
+ *         https://lora-alliance.org/wp-content/uploads/2020/11/lorawan-1.0.x-join-synch-issues-remedies-v1.0.0.pdf
+ */
+#define USE_10X_JOIN_NONCE_COUNTER_CHECK            0
+
+/*!
+ * Initial value of the frame counters
+ */
+#define FCNT_DOWN_INITAL_VALUE          0xFFFFFFFF
+
+/*!
+ * LoRaMac Crypto Status
  */
 typedef enum eLoRaMacCryptoStatus
 {
@@ -81,10 +111,6 @@ typedef enum eLoRaMacCryptoStatus
      * FCntUp/Down check failed (duplicated)
      */
     LORAMAC_CRYPTO_FAIL_FCNT_DUPLICATED,
-    /*!
-     * MAX_GAP_FCNT check failed
-     */
-    LORAMAC_CRYPTO_FAIL_MAX_GAP_FCNT,
     /*!
      * Not allowed parameter value
      */
@@ -143,15 +169,15 @@ typedef void ( *LoRaMacCryptoNvmEvent )( void );
  * Initialization of LoRaMac Crypto module
  * It sets initial values of volatile variables and assigns the non-volatile context.
  *
- * \param[IN]     cryptoNvmCtxChanged - Callback function which will be called  when the
- *                                      non-volatile context have to be stored.
+ * \param[IN]     nvm                 - Pointer to the non-volatile memory data
+ *                                      structure.
  * \retval                            - Status of the operation
  */
-LoRaMacCryptoStatus_t LoRaMacCryptoInit( LoRaMacCryptoNvmEvent cryptoNvmCtxChanged );
+LoRaMacCryptoStatus_t LoRaMacCryptoInit( LoRaMacCryptoNvmData_t* nvm );
 
 /*!
  * Sets the LoRaWAN specification version to be used.
- * 
+ *
  * \warning This function should be used for ABP only. In case of OTA the version will be set automatically.
  *
  * \param[IN]     version             - LoRaWAN specification version to be used.
@@ -161,31 +187,14 @@ LoRaMacCryptoStatus_t LoRaMacCryptoInit( LoRaMacCryptoNvmEvent cryptoNvmCtxChang
 LoRaMacCryptoStatus_t LoRaMacCryptoSetLrWanVersion( Version_t version );
 
 /*!
- * Restores the internal nvm context from passed pointer.
- *
- * \param[IN]     cryptoNmvCtx     - Pointer to non-volatile crypto module context to be restored.
- * \retval                         - Status of the operation
- */
-LoRaMacCryptoStatus_t LoRaMacCryptoRestoreNvmCtx( void* cryptoNvmCtx );
-
-/*!
- * Returns a pointer to the internal non-volatile context.
- *
- * \param[IN]     cryptoNvmCtxSize - Size of the module non-volatile context
- * \retval                         - Points to a structure where the module store its non-volatile context
- */
-void* LoRaMacCryptoGetNvmCtx( size_t* cryptoNvmCtxSize );
-
-/*!
  * Returns updated fCntID downlink counter value.
  *
  * \param[IN]     fCntID         - Frame counter identifier
- * \param[IN]     maxFcntGap     - Maximum allowed frame counter difference (only necessary for L2 LW1.0.x)
  * \param[IN]     frameFcnt      - Received frame counter (used to update current counter value)
  * \param[OUT]    currentDown    - Current downlink counter value
  * \retval                       - Status of the operation
  */
-LoRaMacCryptoStatus_t LoRaMacCryptoGetFCntDown( FCntIdentifier_t fCntID, uint16_t maxFCntGap, uint32_t frameFcnt, uint32_t* currentDown );
+LoRaMacCryptoStatus_t LoRaMacCryptoGetFCntDown( FCntIdentifier_t fCntID, uint32_t frameFcnt, uint32_t* currentDown );
 
 /*!
  * Returns updated fCntUp uplink counter value.
@@ -194,6 +203,16 @@ LoRaMacCryptoStatus_t LoRaMacCryptoGetFCntDown( FCntIdentifier_t fCntID, uint16_
  * \retval                       - Status of the operation
  */
 LoRaMacCryptoStatus_t LoRaMacCryptoGetFCntUp( uint32_t* currentUp );
+
+/*!
+ * Computes next RJcount0 or RJcount1 counter value.
+ *
+ * \param[IN]     fCntID          - Frame counter identifier
+ * \param[OUT]    rJcount         - RJcount value
+ *
+ * \retval                        - Status of the operation
+ */
+LoRaMacCryptoStatus_t LoRaMacCryptoGetRJcount( FCntIdentifier_t fCntID, uint16_t* rJcount );
 
 /*!
  * Provides multicast context.
@@ -275,18 +294,19 @@ LoRaMacCryptoStatus_t LoRaMacCryptoSecureMessage( uint32_t fCntUp, uint8_t txDr,
 LoRaMacCryptoStatus_t LoRaMacCryptoUnsecureMessage( AddressIdentifier_t addrID, uint32_t address, FCntIdentifier_t fCntID, uint32_t fCntDown, LoRaMacMessageData_t* macMsg );
 
 /*!
- * Derives the McRootKey from the GenAppKey or AppKey.
+ * Derives the McRootKey from the AppKey.
  *
  * 1.0.x
- * McRootKey = aes128_encrypt(GenAppKey , 0x00 | pad16)
+ * McRootKey = aes128_encrypt(AppKey, 0x00 | pad16)
  *
  * 1.1.x
- * McRootKey = aes128_encrypt(AppKey , 0x20 | pad16)
+ * McRootKey = aes128_encrypt(AppKey, 0x20 | pad16)
  *
- * \param[IN]     keyID           - Key identifier of the root key to use to perform the derivation ( GenAppKey or AppKey )
+ * \param[IN]     versionMinor    - LoRaWAN specification minor version to be used.
+ * \param[IN]     keyID           - Key identifier of the root key to use to perform the derivation ( AppKey )
  * \retval                        - Status of the operation
  */
-LoRaMacCryptoStatus_t LoRaMacCryptoDeriveMcRootKey( KeyIdentifier_t keyID );
+LoRaMacCryptoStatus_t LoRaMacCryptoDeriveMcRootKey( uint8_t versionMinor, KeyIdentifier_t keyID );
 
 /*!
  * Derives the McKEKey from the McRootKey.
@@ -311,5 +331,9 @@ LoRaMacCryptoStatus_t LoRaMacCryptoDeriveMcKEKey( KeyIdentifier_t keyID );
 LoRaMacCryptoStatus_t LoRaMacCryptoDeriveMcSessionKeyPair( AddressIdentifier_t addrID, uint32_t mcAddr );
 
 /*! \} addtogroup LORAMAC */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __LORAMAC_CRYPTO_H__

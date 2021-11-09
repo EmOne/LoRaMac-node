@@ -23,6 +23,11 @@
 #ifndef __SX126x_BOARD_H__
 #define __SX126x_BOARD_H__
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "sx126x/sx126x.h"
@@ -50,6 +55,11 @@ void SX126xIoDeInit( void );
  * \brief Initializes the TCXO power pin.
  */
 void SX126xIoTcxoInit( void );
+
+/*!
+ * \brief Initializes RF switch control pins.
+ */
+void SX126xIoRfSwitchInit( void );
 
 /*!
  * \brief Initializes the radio debug pins.
@@ -150,22 +160,36 @@ bool SX126xCheckRfFrequency( uint32_t frequency );
 uint32_t SX126xGetBoardTcxoWakeupTime( void );
 
 /*!
- * \brief Writes new Tx debug pin state
+ * \brief Gets current state of DIO1 pin state.
  *
- * \param [IN] state Debug pin state
+ * \retval state DIO1 pin current state.
  */
-void SX126xDbgPinTxWrite( uint8_t state );
+uint32_t SX126xGetDio1PinState( void );
 
 /*!
- * \brief Writes new Rx debug pin state
+ * \brief Gets the current Radio OperationMode variable
  *
- * \param [IN] state Debug pin state
+ * \retval      RadioOperatingModes_t last operating mode
  */
-void SX126xDbgPinRxWrite( uint8_t state );
+RadioOperatingModes_t SX126xGetOperatingMode( void );
+
+/*!
+ * \brief Sets/Updates the current Radio OperationMode variable.
+ *
+ * \remark WARNING: This function is only required to reflect the current radio
+ *                  operating mode when processing interrupts.
+ *
+ * \param [in] mode           New operating mode
+ */
+void SX126xSetOperatingMode( RadioOperatingModes_t mode );
 
 /*!
  * Radio hardware and global parameters
  */
 extern SX126x_t SX126x;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __SX126x_BOARD_H__

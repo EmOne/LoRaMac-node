@@ -23,7 +23,13 @@
 #ifndef __MPL3115_H__
 #define __MPL3115_H__
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
+#include "utilities.h"
 
 /*
  * MPL3115A2 I2C address
@@ -123,16 +129,16 @@
 /*!
  * \brief Initializes the device
  *
- * \retval status [SUCCESS, FAIL]
+ * \retval status [LMN_STATUS_OK, LMN_STATUS_ERROR]
  */
-uint8_t MPL3115Init( void );
+LmnStatus_t MPL3115Init( void );
 
 /*!
  * \brief Resets the device
  *
- * \retval status [SUCCESS, FAIL]
+ * \retval status [LMN_STATUS_OK, LMN_STATUS_ERROR]
  */
-uint8_t MPL3115Reset( void );
+LmnStatus_t MPL3115Reset( void );
 
 /*!
  * \brief Reads the altitude from the MPL3115
@@ -154,5 +160,9 @@ float MPL3115ReadPressure( void );
  * \retval temperature Measured temperature
  */
 float MPL3115ReadTemperature( void );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __MPL3115_H__

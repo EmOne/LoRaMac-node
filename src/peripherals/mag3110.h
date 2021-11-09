@@ -23,7 +23,13 @@
 #ifndef __MAG3110_H__
 #define __MAG3110_H__
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
+#include "utilities.h"
 
 /*!
  * MAG3110 I2C address
@@ -38,25 +44,25 @@
 /*!
  * \brief Initializes the device
  *
- * \retval status [SUCCESS, FAIL]
+ * \retval status [LMN_STATUS_OK, LMN_STATUS_ERROR]
  */
-uint8_t MAG3110Init( void );
+LmnStatus_t MAG3110Init( void );
 
 /*!
  * \brief Resets the device
  *
- * \retval status [SUCCESS, FAIL]
+ * \retval status [LMN_STATUS_OK, LMN_STATUS_ERROR]
  */
-uint8_t MAG3110Reset( void );
+LmnStatus_t MAG3110Reset( void );
 
 /*!
  * \brief Writes a byte at specified address in the device
  *
  * \param [IN]: addr
  * \param [IN]: data
- * \retval status [SUCCESS, FAIL]
+ * \retval status [LMN_STATUS_OK, LMN_STATUS_ERROR]
  */
-uint8_t MAG3110Write( uint8_t addr, uint8_t data );
+LmnStatus_t MAG3110Write( uint8_t addr, uint8_t data );
 
 /*!
  * \brief Writes a buffer at specified address in the device
@@ -64,18 +70,18 @@ uint8_t MAG3110Write( uint8_t addr, uint8_t data );
  * \param [IN]: addr
  * \param [IN]: data
  * \param [IN]: size
- * \retval status [SUCCESS, FAIL]
+ * \retval status [LMN_STATUS_OK, LMN_STATUS_ERROR]
  */
-uint8_t MAG3110WriteBuffer( uint8_t addr, uint8_t *data, uint8_t size );
+LmnStatus_t MAG3110WriteBuffer( uint8_t addr, uint8_t *data, uint8_t size );
 
 /*!
  * \brief Reads a byte at specified address in the device
  *
  * \param [IN]: addr
  * \param [OUT]: data
- * \retval status [SUCCESS, FAIL]
+ * \retval status [LMN_STATUS_OK, LMN_STATUS_ERROR]
  */
-uint8_t MAG3110Read( uint8_t addr, uint8_t *data );
+LmnStatus_t MAG3110Read( uint8_t addr, uint8_t *data );
 
 /*!
  * \brief Reads a buffer at specified address in the device
@@ -83,9 +89,9 @@ uint8_t MAG3110Read( uint8_t addr, uint8_t *data );
  * \param [IN]: addr
  * \param [OUT]: data
  * \param [IN]: size
- * \retval status [SUCCESS, FAIL]
+ * \retval status [LMN_STATUS_OK, LMN_STATUS_ERROR]
  */
-uint8_t MAG3110ReadBuffer( uint8_t addr, uint8_t *data, uint8_t size );
+LmnStatus_t MAG3110ReadBuffer( uint8_t addr, uint8_t *data, uint8_t size );
 
 /*!
  * \brief Sets the I2C device slave address
@@ -100,5 +106,9 @@ void MAG3110SetDeviceAddr( uint8_t addr );
  * \retval: addr Current device slave address
  */
 uint8_t MAG3110GetDeviceAddr( void );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __MAG3110_H__
