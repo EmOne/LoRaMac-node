@@ -125,7 +125,7 @@ extern "C"
 /*!
  * Default datarate used by the node
  */
-#define AS923_DEFAULT_DATARATE                      DR_2
+#define AS923_DEFAULT_DATARATE                      DR_0
 
 /*!
  * The minimum datarate which is used when the
@@ -166,12 +166,12 @@ extern "C"
 /*!
  * Default Max EIRP
  */
-#define AS923_DEFAULT_MAX_EIRP                      16.0f
+#define AS923_DEFAULT_MAX_EIRP                      22.0f
 
 /*!
  * Default antenna gain
  */
-#define AS923_DEFAULT_ANTENNA_GAIN                  2.15f
+#define AS923_DEFAULT_ANTENNA_GAIN                  0.15f
 
 /*!
  * Enabled or disabled the duty cycle
@@ -298,7 +298,7 @@ static const uint8_t MaxPayloadOfDatarateDwell0AS923[] = { 51, 51, 115, 115, 242
  * Maximum payload with respect to the datarate index.
  * The table is only valid for uplinks.
  */
-static const uint8_t MaxPayloadOfDatarateDwell1AS923[] = { 0, 0, 11, 53, 125, 242, 242, 242 };
+static const uint8_t MaxPayloadOfDatarateDwell1AS923[] = { 11, 11, 23, 53, 125, 242, 242, 242 };
 
 /*!
  * Effective datarate offsets for receive window 1 when downlink dwell time is zero.

@@ -40,7 +40,7 @@
  * When set to 1 the application uses the Over-the-Air activation procedure
  * When set to 0 the application uses the Personalization activation procedure
  */
-#define OVER_THE_AIR_ACTIVATION                            1
+#define OVER_THE_AIR_ACTIVATION                            0
 
 /*!
  * When using ABP activation the MAC layer must know in advance to which server
@@ -49,7 +49,7 @@
 #define ABP_ACTIVATION_LRWAN_VERSION_V10x                  0x01000400 // 1.0.4.0
 #define ABP_ACTIVATION_LRWAN_VERSION_V11x                  0x01010100 // 1.1.1.0
 
-#define ABP_ACTIVATION_LRWAN_VERSION                       ABP_ACTIVATION_LRWAN_VERSION_V11x
+#define ABP_ACTIVATION_LRWAN_VERSION                       ABP_ACTIVATION_LRWAN_VERSION_V10x
 
 /*!
  * Indicates if the end-device is to be connected to a private or public network

@@ -117,7 +117,7 @@ void SX126xInit( DioIrqHandler dioIrq )
     SX126xIoIrqInit( dioIrq );
 
     SX126xWakeup( );
-    SX126xSetStandby( STDBY_RC );
+    SX126xSetStandby( STDBY_XOSC );
 
     // Initialize TCXO control
     SX126xIoTcxoInit( );
@@ -125,7 +125,7 @@ void SX126xInit( DioIrqHandler dioIrq )
     // Initialize RF switch control
     SX126xIoRfSwitchInit( );
 
-    SX126xSetOperatingMode( MODE_STDBY_RC );
+    SX126xSetOperatingMode( MODE_STDBY_XOSC );
 }
 
 void SX126xCheckDeviceReady( void )
@@ -240,7 +240,7 @@ uint32_t SX126xGetRandom( void )
 
     SX126xReadRegisters( RANDOM_NUMBER_GENERATORBASEADDR, ( uint8_t* )&number, 4 );
 
-    SX126xSetStandby( STDBY_RC );
+    SX126xSetStandby( STDBY_XOSC );
 
     SX126xWriteRegister( REG_ANA_LNA, regAnaLna );
     SX126xWriteRegister( REG_ANA_MIXER, regAnaMixer );

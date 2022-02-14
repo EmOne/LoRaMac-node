@@ -515,7 +515,7 @@ void RadioInit( RadioEvents_t *events )
     RadioEvents = events;
 
     SX126xInit( RadioOnDioIrq );
-    SX126xSetStandby( STDBY_RC );
+    SX126xSetStandby( STDBY_XOSC );
     SX126xSetRegulatorMode( USE_DCDC );
 
     SX126xSetBufferBaseAddress( 0x00, 0x00 );
@@ -1051,7 +1051,7 @@ void RadioSleep( void )
 
 void RadioStandby( void )
 {
-    SX126xSetStandby( STDBY_RC );
+    SX126xSetStandby( STDBY_XOSC );
 }
 
 void RadioRx( uint32_t timeout )
@@ -1226,7 +1226,7 @@ void RadioIrqProcess( void )
         {
             TimerStop( &TxTimeoutTimer );
             //!< Update operating mode state to a value lower than \ref MODE_STDBY_XOSC
-            SX126xSetOperatingMode( MODE_STDBY_RC );
+            SX126xSetOperatingMode( MODE_STDBY_XOSC );
             if( ( RadioEvents != NULL ) && ( RadioEvents->TxDone != NULL ) )
             {
                 RadioEvents->TxDone( );
@@ -1240,7 +1240,7 @@ void RadioIrqProcess( void )
                 if( RxContinuous == false )
                 {
                     //!< Update operating mode state to a value lower than \ref MODE_STDBY_XOSC
-                    SX126xSetOperatingMode( MODE_STDBY_RC );
+                    SX126xSetOperatingMode( MODE_STDBY_XOSC );
                 }
                 if( ( RadioEvents != NULL ) && ( RadioEvents->RxError ) )
                 {
@@ -1255,7 +1255,7 @@ void RadioIrqProcess( void )
                 if( RxContinuous == false )
                 {
                     //!< Update operating mode state to a value lower than \ref MODE_STDBY_XOSC
-                    SX126xSetOperatingMode( MODE_STDBY_RC );
+                    SX126xSetOperatingMode( MODE_STDBY_XOSC );
 
                     // WORKAROUND - Implicit Header Mode Timeout Behavior, see DS_SX1261-2_V1.2 datasheet chapter 15.3
                     // RegRtcControl = @address 0x0902
@@ -1276,7 +1276,7 @@ void RadioIrqProcess( void )
         if( ( irqRegs & IRQ_CAD_DONE ) == IRQ_CAD_DONE )
         {
             //!< Update operating mode state to a value lower than \ref MODE_STDBY_XOSC
-            SX126xSetOperatingMode( MODE_STDBY_RC );
+            SX126xSetOperatingMode( MODE_STDBY_XOSC );
             if( ( RadioEvents != NULL ) && ( RadioEvents->CadDone != NULL ) )
             {
                 RadioEvents->CadDone( ( ( irqRegs & IRQ_CAD_ACTIVITY_DETECTED ) == IRQ_CAD_ACTIVITY_DETECTED ) );
@@ -1289,7 +1289,7 @@ void RadioIrqProcess( void )
             {
                 TimerStop( &TxTimeoutTimer );
                 //!< Update operating mode state to a value lower than \ref MODE_STDBY_XOSC
-                SX126xSetOperatingMode( MODE_STDBY_RC );
+                SX126xSetOperatingMode( MODE_STDBY_XOSC );
                 if( ( RadioEvents != NULL ) && ( RadioEvents->TxTimeout != NULL ) )
                 {
                     RadioEvents->TxTimeout( );
@@ -1299,7 +1299,7 @@ void RadioIrqProcess( void )
             {
                 TimerStop( &RxTimeoutTimer );
                 //!< Update operating mode state to a value lower than \ref MODE_STDBY_XOSC
-                SX126xSetOperatingMode( MODE_STDBY_RC );
+                SX126xSetOperatingMode( MODE_STDBY_XOSC );
                 if( ( RadioEvents != NULL ) && ( RadioEvents->RxTimeout != NULL ) )
                 {
                     RadioEvents->RxTimeout( );
@@ -1328,7 +1328,7 @@ void RadioIrqProcess( void )
             if( RxContinuous == false )
             {
                 //!< Update operating mode state to a value lower than \ref MODE_STDBY_XOSC
-                SX126xSetOperatingMode( MODE_STDBY_RC );
+                SX126xSetOperatingMode( MODE_STDBY_XOSC );
             }
             if( ( RadioEvents != NULL ) && ( RadioEvents->RxTimeout != NULL ) )
             {

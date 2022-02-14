@@ -118,6 +118,7 @@ Alternatively one can use a graphical interface to configure CMake, drop down me
      * SKiM880B
      * SKiM980A
      * SKiM881AXL
+     * eMOD-iMS62F
 * `REGION_EU868` - Enables support for the Region EU868 (Default ON)
 * `REGION_US915` - Enables support for the Region US915 (Default OFF)
 * `REGION_CN779` - Enables support for the Region CN779 (Default OFF)
