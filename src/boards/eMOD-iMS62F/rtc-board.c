@@ -39,7 +39,7 @@
 #define MIN_ALARM_DELAY                             3 // in ticks
 
 // sub-second number of bits
-#define N_PREDIV_S                                  10
+#define N_PREDIV_S                                  13
 
 // Synchronous prediv
 #define PREDIV_S                                    ( ( 1 << N_PREDIV_S ) - 1 )

@@ -27,3 +27,4 @@ tmp/
 .cmaketools.json
 ipch/
 doc
+.history/
