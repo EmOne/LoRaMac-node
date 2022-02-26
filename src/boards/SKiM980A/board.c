@@ -319,12 +319,12 @@ uint8_t BoardGetBatteryLevel( void )
 
     BatteryVoltage = BoardBatteryMeasureVoltage( );
 
-    if( GetBoardPowerSource( ) == USB_POWER )
-    {
-        batteryLevel = 0;
-    }
-    else
-    {
+    // if( GetBoardPowerSource( ) == USB_POWER )
+    // {
+    //     batteryLevel = 0;
+    // }
+    // else
+    // {
         if( BatteryVoltage >= BATTERY_MAX_LEVEL )
         {
             batteryLevel = 254;
@@ -341,7 +341,7 @@ uint8_t BoardGetBatteryLevel( void )
         {
             batteryLevel = 255;
         }
-    }
+    // }
     return batteryLevel;
 }
 

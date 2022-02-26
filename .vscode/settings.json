@@ -45,12 +45,12 @@
 
         // Target board, the following boards are supported:
         // NAMote72, NucleoL073 (Default), NucleoL152, NucleoL476, SAMR34, SKiM880B, SKiM980A, SKiM881AXL, eMOD-iMS62F, B-L072Z-LRWAN1.
-        "BOARD":"eMOD-iMS62F",
+        "BOARD":"SKiM980A",
 
         // MBED Radio shield selection. (Applies only to Nucleo platforms)
         // The following shields are supported:
         // SX1272MB2DAS, SX1276MB1LAS, SX1276MB1MAS, SX1261MBXBAS(Default), SX1262MBXCAS, SX1262MBXDAS, LR1110MB1XXS.
-        "MBED_RADIO_SHIELD":"SX1262MBXCAS",
+        "MBED_RADIO_SHIELD":"SX1272MB2DAS",
 
         // Secure element type selection the following are supported
         // SOFT_SE(Default), LR1110_SE, ATECC608A_TNGLORA_SE
@@ -86,6 +86,7 @@
         "utilities.h": "c",
         "se-identity.h": "c",
         "githubversion.h": "c",
-        "commissioning.h": "c"
+        "commissioning.h": "c",
+        "stm32l1xx_hal_rcc.h": "c"
     }
 }
