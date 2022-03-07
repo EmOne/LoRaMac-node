@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.6)
 #---------------------------------------------------------------------------------------
 
 # Allow switching of sub projects
-set(SUB_PROJECT_LIST periodic-uplink-lpp fuota-test-01)
+set(SUB_PROJECT_LIST periodic-uplink-lpp periodic-uplink-lpp-counter fuota-test-01)
 set(SUB_PROJECT periodic-uplink-lpp CACHE STRING "Default sub project is periodic-uplink-lpp")
 set_property(CACHE SUB_PROJECT PROPERTY STRINGS ${SUB_PROJECT_LIST})
 
@@ -43,6 +43,36 @@ endif()
 option(SECURE_ELEMENT_PRE_PROVISIONED "Secure-element pre-provisioning" ON)
 
 if(SUB_PROJECT STREQUAL periodic-uplink-lpp)
+
+    #---------------------------------------------------------------------------------------
+    # Application common features handling
+    #---------------------------------------------------------------------------------------
+    list(APPEND ${PROJECT_NAME}_COMMON
+        "${CMAKE_CURRENT_LIST_DIR}/common/CayenneLpp.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/cli.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandlerMsgDisplay.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/NvmDataMgmt.c"
+    )
+
+    #---------------------------------------------------------------------------------------
+    # Application LoRaMac handler
+    #---------------------------------------------------------------------------------------
+    list(APPEND ${PROJECT_NAME}_LMH
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/LmHandler.c"
+    )
+
+    #---------------------------------------------------------------------------------------
+    # LoRaMac handler applicative packages
+    #---------------------------------------------------------------------------------------
+    list(APPEND ${PROJECT_NAME}_LMHP
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/packages/FragDecoder.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/packages/LmhpClockSync.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/packages/LmhpCompliance.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/packages/LmhpFragmentation.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/packages/LmhpRemoteMcastSetup.c"
+    )
+
+elseif(SUB_PROJECT STREQUAL periodic-uplink-lpp-counter)
 
     #---------------------------------------------------------------------------------------
     # Application common features handling

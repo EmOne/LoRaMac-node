@@ -102,13 +102,18 @@ extern "C"
 #else
 #define LED_1                                       PA_3
 #endif
-#define LED_2                                       PA_0
+// #define LED_2                                       PA_0
 #define LED_3                                       PA_1
 #define LED_4                                       PA_8
 
 // Debug pins definition.
 #define RADIO_DBG_PIN_TX                            NC
 #define RADIO_DBG_PIN_RX                            NC
+
+#define IO1                                         PA_8
+#define IO2                                         POTI //PB_7 
+
+#define WKUP                                        PA_0
 
 #ifdef __cplusplus
 }

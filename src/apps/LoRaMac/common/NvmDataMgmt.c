@@ -267,6 +267,12 @@ bool NvmDataMgmtFactoryReset( void )
         return false;
     }
     offset += sizeof( LoRaMacClassBNvmData_t );
+
+    if( NvmmReset( 8U, 0x0FF8) == false )
+    {
+        return false;
+    }
+
 #endif
     return true;
 }

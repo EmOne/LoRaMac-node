@@ -27,8 +27,8 @@
         "APPLICATION":"LoRaMac",
 
         // Select LoRaMac sub project. You can choose between:
-        // periodic-uplink-lpp, fuota-test-01.
-        "SUB_PROJECT":"periodic-uplink-lpp",
+        // periodic-uplink-lpp, periodic-uplink-lpp-counter, fuota-test-01.
+        "SUB_PROJECT":"periodic-uplink-lpp-counter",
 
         // Switch for Class B support of LoRaMac:
         "CLASSB_ENABLED":"ON",
@@ -87,6 +87,7 @@
         "se-identity.h": "c",
         "githubversion.h": "c",
         "commissioning.h": "c",
-        "stm32l1xx_hal_rcc.h": "c"
+        "stm32l1xx_hal_rcc.h": "c",
+        "lpm-board.h": "c"
     }
 }

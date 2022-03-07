@@ -50,9 +50,12 @@
 #if ( USE_POTENTIOMETER == 0 )
 Gpio_t Led1;
 #endif
-Gpio_t Led2;
+// Gpio_t Led2;
 Gpio_t Led3;
 Gpio_t Led4;
+Gpio_t Wkup;
+Gpio_t Io1;
+Gpio_t Io2;
 
 /*
  * MCU objects
@@ -85,6 +88,22 @@ static void SystemClockReConfig( void );
  * Timer used at first boot to calibrate the SystemWakeupTime
  */
 static TimerEvent_t CalibrateSystemWakeupTimeTimer;
+
+/*!
+ * Function executed on IO1 event
+ */
+extern void OnWKUPEvent(void *context);
+
+/*!
+ * Function executed on IO1 event
+ */
+extern void OnIO1Event(void *context);
+
+/*!
+ * Function executed on IO2 event
+ */
+extern void OnIO2Event(void *context);
+
 
 /*!
  * Flag to indicate if the MCU is Initialized
@@ -140,9 +159,16 @@ void BoardInitMcu( void )
 #if ( USE_POTENTIOMETER == 0 )
         GpioInit( &Led1, LED_1, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
 #endif
-        GpioInit( &Led2, LED_2, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+        // GpioInit( &Led2, LED_2, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
         GpioInit( &Led3, LED_3, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
         GpioInit( &Led4, LED_4, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+
+        GpioInit( &Wkup, WKUP, PIN_INPUT, PIN_PUSH_PULL, PIN_PULL_UP, 1);
+        GpioSetInterrupt( &Wkup, IRQ_RISING_EDGE, IRQ_VERY_LOW_PRIORITY, &OnWKUPEvent );
+        GpioInit( &Io1, IO1, PIN_OUTPUT , PIN_PUSH_PULL, PIN_NO_PULL, 0);
+        // GpioSetInterrupt( &Io1, IRQ_RISING_EDGE, IRQ_VERY_LOW_PRIORITY, &OnIO1Event );
+        GpioInit( &Io2, IO2, PIN_INPUT , PIN_PUSH_PULL, PIN_PULL_UP, 1);
+        GpioSetInterrupt( &Io2, IRQ_RISING_EDGE, IRQ_VERY_LOW_PRIORITY, &OnIO2Event );
 
         SystemClockConfig( );
 
@@ -150,7 +176,7 @@ void BoardInitMcu( void )
         FifoInit( &Uart1.FifoRx, Uart1RxBuffer, UART1_FIFO_RX_SIZE );
         // Configure your terminal for 8 Bits data (7 data bit + 1 parity bit), no parity and no flow ctrl
         UartInit( &Uart1, UART_1, UART_TX, UART_RX );
-        UartConfig( &Uart1, RX_TX, 921600, UART_8_BIT, UART_1_STOP_BIT, NO_PARITY, NO_FLOW_CTRL );
+        UartConfig( &Uart1, RX_TX, 115200, UART_8_BIT, UART_1_STOP_BIT, NO_PARITY, NO_FLOW_CTRL );
 
         RtcInit( );
 
@@ -158,7 +184,7 @@ void BoardInitMcu( void )
 #if ( USE_POTENTIOMETER == 0 )
         GpioWrite( &Led1, 0 );
 #endif
-        GpioWrite( &Led2, 0 );
+        // GpioWrite( &Led2, 0 );
         GpioWrite( &Led3, 0 );
         GpioWrite( &Led4, 0 );
 
@@ -174,7 +200,7 @@ void BoardInitMcu( void )
         SystemClockReConfig( );
     }
 
-    AdcInit( &Adc, POTI );
+    // AdcInit( &Adc, POTI );
 
     SpiInit( &SX1272.Spi, SPI_1, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, NC );
     SX1272IoInit( );
@@ -325,6 +351,7 @@ uint8_t BoardGetBatteryLevel( void )
     // }
     // else
     // {
+        GpioWrite(&Io1, 0);
         if( BatteryVoltage >= BATTERY_MAX_LEVEL )
         {
             batteryLevel = 254;
@@ -332,6 +359,10 @@ uint8_t BoardGetBatteryLevel( void )
         else if( ( BatteryVoltage > BATTERY_MIN_LEVEL ) && ( BatteryVoltage < BATTERY_MAX_LEVEL ) )
         {
             batteryLevel = ( ( 253 * ( BatteryVoltage - BATTERY_MIN_LEVEL ) ) / ( BATTERY_MAX_LEVEL - BATTERY_MIN_LEVEL ) ) + 1;
+            if(batteryLevel < (255 / 4))
+            {
+                GpioWrite(&Io1, 1);
+            }
         }
         else if( ( BatteryVoltage > BATTERY_SHUTDOWN_LEVEL ) && ( BatteryVoltage <= BATTERY_MIN_LEVEL ) )
         {
