@@ -276,7 +276,7 @@ uint8_t BoardGetPotiLevel( void )
     uint16_t vpoti = 0;
 
     // Read the current potentiometer setting
-    vpoti = AdcReadChannel( &Adc , ADC_CHANNEL_1 );
+    vpoti = AdcReadChannel( &Adc , ADC_CHANNEL_3 );
 
     // check the limits
     if( vpoti >= POTI_MAX_LEVEL )

@@ -111,7 +111,7 @@ extern "C"
 #define RADIO_DBG_PIN_RX                            NC
 
 #define IO1                                         PA_8
-#define IO2                                         PA_1 //NFC:PA_1 //NON-NFC:PA_3 //iMS62F:PB_7 
+#define IO2                                         PA_3 //NFC:PA_1 //NON-NFC:PA_3 //iMS62F:PB_7 
 
 #define WKUP                                        PA_0
 

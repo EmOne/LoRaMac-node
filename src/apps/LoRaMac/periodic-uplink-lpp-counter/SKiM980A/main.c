@@ -42,11 +42,12 @@
 #include "CayenneLpp.h"
 #include "LmHandlerMsgDisplay.h"
 
+#define APP_SIZE 8
 static uint32_t         in_cnt          = 0U;
 static uint32_t         in_out_cnt      = 0U;
 const volatile uint32_t stop_mode_timer = 8000U; /* Test at 8 sec */
-static uint8_t uplink_buffer[9U]    = { 0 };
-static uint8_t test_read_buffer[8U] = { 0 };
+static uint8_t uplink_buffer[APP_SIZE + 1]    = { 0 };
+static uint8_t test_read_buffer[APP_SIZE] = { 0 };
 
 #ifndef ACTIVE_REGION
 
@@ -84,7 +85,7 @@ static uint8_t test_read_buffer[8U] = { 0 };
  *
  * \remark Please note that LORAWAN_DEFAULT_DATARATE is used only when ADR is disabled 
  */
-#define LORAWAN_DEFAULT_DATARATE                    DR_0
+#define LORAWAN_DEFAULT_DATARATE                    DR_2
 
 /*!
  * LoRaWAN confirmed messages
@@ -298,7 +299,7 @@ int main( void )
     BoardInitMcu( );
     BoardInitPeriph( );
 
-    NvmmRead(&test_read_buffer[0], 8U, 0x0FF8);
+    NvmmRead(&test_read_buffer[0], APP_SIZE, 0x0FF8);
     in_cnt |= test_read_buffer[0U] << 24;
     in_cnt |= test_read_buffer[1U] << 16;
     in_cnt |= test_read_buffer[2U] << 8;
@@ -308,6 +309,9 @@ int main( void )
     in_out_cnt |= test_read_buffer[6U] << 8;
     in_out_cnt |= test_read_buffer[7U] << 0;
     
+    printf("In : %ld\n", in_cnt);
+    printf("In Out: %ld\n", in_out_cnt);
+
     TimerInit( &Led4Timer, OnLed4TimerEvent );
     TimerSetValue( &Led4Timer, 25 );
 
@@ -532,29 +536,29 @@ static void PrepareTxFrame( void )
 
    /* Test uplink WKUP and IO2 */
 
-    uplink_buffer[0U]            = in_cnt << 24U;
-    uplink_buffer[1U]            = in_cnt << 16U;
-    uplink_buffer[2U]            = in_cnt << 8U;
+    uplink_buffer[0U]            = in_cnt >> 24U;
+    uplink_buffer[1U]            = in_cnt >> 16U;
+    uplink_buffer[2U]            = in_cnt >> 8U;
     uplink_buffer[3U]            = in_cnt & 0x00FF;
-    uplink_buffer[4U]            = in_out_cnt << 24U;
-    uplink_buffer[5U]            = in_out_cnt << 16U;
-    uplink_buffer[6U]            = in_out_cnt << 8U;
+    uplink_buffer[4U]            = in_out_cnt >> 24U;
+    uplink_buffer[5U]            = in_out_cnt >> 16U;
+    uplink_buffer[6U]            = in_out_cnt >> 8U;
     uplink_buffer[7U]            = in_out_cnt & 0x00FF;
     uplink_buffer[8U]            = potiPercentage;
 
-    memcpy1(AppData.Buffer, uplink_buffer, 9U);
+    memcpy1(AppData.Buffer, uplink_buffer, APP_SIZE + 1);
     
-    AppData.BufferSize = 9U;
+    AppData.BufferSize = APP_SIZE + 1;
 
     if( LmHandlerSend( &AppData, LmHandlerParams.IsTxConfirmed ) == LORAMAC_HANDLER_SUCCESS )
     {
         // Switch LED 4 ON
         GpioWrite( &Led4, 1 );
         TimerStart( &Led4Timer );
-        NvmmRead(&test_read_buffer[0], 8U, 0x0FF8); 
-        if(memcmp(test_read_buffer, uplink_buffer, 8) < 0)
+        NvmmRead(&test_read_buffer[0], APP_SIZE, 0x0FF8); 
+        if(memcmp(test_read_buffer, uplink_buffer, APP_SIZE) < 0)
         {
-            NvmmWrite(uplink_buffer, 8U, 0x0FF8);
+            NvmmWrite(uplink_buffer, APP_SIZE, 0x0FF8);
         }
         
     }
