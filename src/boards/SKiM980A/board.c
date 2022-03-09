@@ -51,7 +51,7 @@
 Gpio_t Led1;
 #endif
 // Gpio_t Led2;
-Gpio_t Led3;
+// Gpio_t Led3;
 Gpio_t Led4;
 Gpio_t Wkup;
 Gpio_t Io1;
@@ -160,15 +160,21 @@ void BoardInitMcu( void )
         GpioInit( &Led1, LED_1, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
 #endif
         // GpioInit( &Led2, LED_2, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
-        GpioInit( &Led3, LED_3, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+        // GpioInit( &Led3, LED_3, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
         GpioInit( &Led4, LED_4, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
 
         GpioInit( &Wkup, WKUP, PIN_INPUT, PIN_PUSH_PULL, PIN_PULL_UP, 1);
         GpioSetInterrupt( &Wkup, IRQ_RISING_EDGE, IRQ_VERY_LOW_PRIORITY, &OnWKUPEvent );
-        GpioInit( &Io1, IO1, PIN_OUTPUT , PIN_PUSH_PULL, PIN_NO_PULL, 0);
+        
+        GpioInit( &Io1, IO1, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1);
+        // GpioInit( &Io1, IO1, PIN_INPUT, PIN_PUSH_PULL, PIN_PULL_UP, 1);
         // GpioSetInterrupt( &Io1, IRQ_RISING_EDGE, IRQ_VERY_LOW_PRIORITY, &OnIO1Event );
-        GpioInit( &Io2, IO2, PIN_INPUT , PIN_PUSH_PULL, PIN_PULL_UP, 1);
-        GpioSetInterrupt( &Io2, IRQ_RISING_EDGE, IRQ_VERY_LOW_PRIORITY, &OnIO2Event );
+
+        GpioInit( &Io2, IO2, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0);
+        GpioWrite( &Io2, 0 );
+        // GpioWrite( &Io2, 1 );
+        // GpioInit( &Io2, IO2, PIN_INPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1);
+        // GpioSetInterrupt( &Io2, IRQ_FALLING_EDGE, IRQ_VERY_LOW_PRIORITY, &OnIO2Event );
 
         SystemClockConfig( );
 
@@ -184,8 +190,8 @@ void BoardInitMcu( void )
 #if ( USE_POTENTIOMETER == 0 )
         GpioWrite( &Led1, 0 );
 #endif
-        // GpioWrite( &Led2, 0 );
-        GpioWrite( &Led3, 0 );
+        GpioWrite( &Io1, 0 );
+        // GpioWrite( &Led3, 0 );
         GpioWrite( &Led4, 0 );
 
         BoardUnusedIoInit( );
@@ -200,8 +206,8 @@ void BoardInitMcu( void )
         SystemClockReConfig( );
     }
 
-    // AdcInit( &Adc, POTI );
-
+    AdcInit( &Adc, IO2 );
+    
     SpiInit( &SX1272.Spi, SPI_1, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, NC );
     SX1272IoInit( );
 
@@ -270,7 +276,7 @@ uint8_t BoardGetPotiLevel( void )
     uint16_t vpoti = 0;
 
     // Read the current potentiometer setting
-    vpoti = AdcReadChannel( &Adc , ADC_CHANNEL_3 );
+    vpoti = AdcReadChannel( &Adc , ADC_CHANNEL_1 );
 
     // check the limits
     if( vpoti >= POTI_MAX_LEVEL )

@@ -45,7 +45,7 @@
 static uint32_t         in_cnt          = 0U;
 static uint32_t         in_out_cnt      = 0U;
 const volatile uint32_t stop_mode_timer = 8000U; /* Test at 8 sec */
-static uint8_t uplink_buffer[8U]    = { 0 };
+static uint8_t uplink_buffer[9U]    = { 0 };
 static uint8_t test_read_buffer[8U] = { 0 };
 
 #ifndef ACTIVE_REGION
@@ -148,10 +148,10 @@ static TimerEvent_t TxTimer;
  */
 static TimerEvent_t Led4Timer;
 
-// /*!
-//  * Timer to handle the state of LED2
-//  */
-// static TimerEvent_t Led2Timer;
+/*!
+ * Timer to handle the state of LED2
+ */
+static TimerEvent_t Led2Timer;
 
 /*!
  * Timer to handle the state of LED beacon indicator
@@ -191,10 +191,10 @@ static void OnTxTimerEvent( void* context );
  */
 static void OnLed4TimerEvent( void* context );
 
-// /*!
-//  * Function executed on Led 2 Timeout event
-//  */
-// static void OnLed2TimerEvent( void* context );
+/*!
+ * Function executed on Led 2 Timeout event
+ */
+static void OnLed2TimerEvent( void* context );
 
 /*!
  * \brief Function executed on Beacon timer Timeout event
@@ -206,10 +206,10 @@ static void OnLedBeaconTimerEvent( void* context );
 //  */
 // static TimerEvent_t WKUPTimer;
 
-// /*!
-//  * Function executed on Wakeup event
-//  */
-// static void OnWKUPTimerEvent(void *context);
+/*!
+ * Function executed on Wakeup event
+ */
+void OnWKUPEvent(void *context);
 
 /*!
  * Function executed on IO1 event
@@ -278,7 +278,7 @@ static volatile uint8_t IsStopMode = 0;
  */
 extern Gpio_t Led4; // Tx
 // extern Gpio_t Led2; // Rx and blinks every 5 seconds when beacon is acquired
-extern Gpio_t Led3; // App
+// extern Gpio_t Led3; // App
 extern Gpio_t Wkup;
 extern Gpio_t Io1;
 extern Gpio_t Io2;
@@ -311,8 +311,9 @@ int main( void )
     TimerInit( &Led4Timer, OnLed4TimerEvent );
     TimerSetValue( &Led4Timer, 25 );
 
-    // TimerInit( &Led2Timer, OnLed2TimerEvent );
-    // TimerSetValue( &Led2Timer, 25 );
+    TimerInit( &Led2Timer, OnLed2TimerEvent );
+    TimerSetValue( &Led2Timer, 500 );
+    TimerStart(&Led2Timer);
 
     TimerInit( &LedBeaconTimer, OnLedBeaconTimerEvent );
     TimerSetValue( &LedBeaconTimer, 5000 );
@@ -433,7 +434,7 @@ static void OnRxData( LmHandlerAppData_t* appData, LmHandlerRxParams_t* params )
     case LORAWAN_APP_PORT:
         {
             AppLedStateOn = appData->Buffer[0] & 0x01;
-            GpioWrite( &Led3, ( ( AppLedStateOn & 0x01 ) != 0 ) ? 1 : 0 );
+            // GpioWrite( &Led3, ( ( AppLedStateOn & 0x01 ) != 0 ) ? 1 : 0 );
         }
         break;
     default:
@@ -511,14 +512,14 @@ static void PrepareTxFrame( void )
 
     // CayenneLppReset( );
 
-    // uint8_t potiPercentage = 0;
+    uint8_t potiPercentage = 0;
     // uint16_t vdd = 0;
 
     // // Read the current potentiometer setting in percent
     // potiPercentage = BoardGetPotiLevel( );
 
     // // Read the current voltage level
-    // BoardGetBatteryLevel( ); // Updates the value returned by BoardGetBatteryVoltage( ) function.
+    potiPercentage = BoardGetBatteryLevel( ); // Updates the value returned by BoardGetBatteryVoltage( ) function.
     // vdd = BoardGetBatteryVoltage( );
 
     // CayenneLppAddDigitalInput( channel++, AppLedStateOn );
@@ -529,7 +530,8 @@ static void PrepareTxFrame( void )
     // CayenneLppCopy( AppData.Buffer );
     // AppData.BufferSize = CayenneLppGetSize( );
 
-   /* Test uplink WKUP and IO1 */
+   /* Test uplink WKUP and IO2 */
+
     uplink_buffer[0U]            = in_cnt << 24U;
     uplink_buffer[1U]            = in_cnt << 16U;
     uplink_buffer[2U]            = in_cnt << 8U;
@@ -538,8 +540,11 @@ static void PrepareTxFrame( void )
     uplink_buffer[5U]            = in_out_cnt << 16U;
     uplink_buffer[6U]            = in_out_cnt << 8U;
     uplink_buffer[7U]            = in_out_cnt & 0x00FF;
+    uplink_buffer[8U]            = potiPercentage;
 
-    memcpy1(AppData.Buffer, uplink_buffer, 8U);
+    memcpy1(AppData.Buffer, uplink_buffer, 9U);
+    
+    AppData.BufferSize = 9U;
 
     if( LmHandlerSend( &AppData, LmHandlerParams.IsTxConfirmed ) == LORAMAC_HANDLER_SUCCESS )
     {
@@ -633,15 +638,32 @@ static void OnLed4TimerEvent( void* context )
     GpioWrite( &Led4, 0 );
 }
 
-// /*!
-//  * Function executed on Led 2 Timeout event
-//  */
-// static void OnLed2TimerEvent( void* context )
-// {
-//     TimerStop( &Led2Timer );
-//     // Switch LED 2 OFF
-//     GpioWrite( &Led2, 0 );
-// }
+/*!
+ * Function executed on Led 2 Timeout event
+ */
+bool IsArc = false;
+static void OnLed2TimerEvent( void* context )
+{
+    TimerStop( &Led2Timer );
+    // // Switch LED 2 OFF
+    // GpioWrite( &Led2, 0 );
+
+    uint8_t potiLevel = BoardGetPotiLevel();
+    
+    if(potiLevel < 50 && !IsArc)
+    {
+        IsArc = true;
+        OnIO2Event(NULL);
+        printf("Arc lvl: %d\n", potiLevel);
+    } else if (potiLevel > 50 && IsArc)
+    {
+        IsArc = false;
+        printf("Arc lvl: %d\n", potiLevel);
+    }
+
+
+    TimerStart( &Led2Timer );
+}
 
 /*!
  * \brief Function executed on Beacon timer Timeout event
@@ -668,23 +690,23 @@ static void OnLedBeaconTimerEvent( void* context )
  */
 void OnWKUPEvent(void *context)
 {
-    uint32_t timeout = 1000000 * 10;
+    uint32_t timeout = 1000000;
     
     CRITICAL_SECTION_BEGIN( );
     
     TimerStop( &TxTimer );
     IsStopMode = 1U;
 
-    while (--timeout <= 0U) __NOP();
+    while (--timeout > 0x0);
     
     in_cnt++;
-
-    printf("In : %ld\n", in_cnt);
 
     IsTxFramePending = 1;
 
     CRITICAL_SECTION_END( ) ;
-
+    
+    printf("In : %ld\n", in_cnt);
+    
     // Schedule next transmission
     TimerSetValue( &TxTimer, TxPeriodicity );
     TimerStart( &TxTimer );
@@ -703,23 +725,23 @@ void OnIO1Event(void *context)
  */
 void OnIO2Event(void *context)
 {
-    uint32_t timeout = 1000000 * 10;
+    // uint32_t timeout = 1000000;
     
     CRITICAL_SECTION_BEGIN( );
     
     TimerStop( &TxTimer );
     IsStopMode = 2U;
     
-    while (--timeout <= 0U) __NOP();
+    // while (--timeout > 0);
 
     in_out_cnt++;
-
-    printf("In Out: %ld\n", in_out_cnt);
 
     // read/write input/output
     IsTxFramePending = 1;
 
     CRITICAL_SECTION_END( ) ;
+
+    printf("In Out: %ld\n", in_out_cnt);
 
     // Schedule next transmission
     TimerSetValue( &TxTimer, TxPeriodicity );

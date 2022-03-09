@@ -55,6 +55,8 @@ void RTC_Alarm_IRQHandler( void );
 
 void USART1_IRQHandler( void );
 
+void ADC1_IRQHandler(void);
+
 #ifdef __cplusplus
 }
 #endif
