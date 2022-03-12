@@ -344,9 +344,9 @@ void USART2_IRQHandler( void )
     // UART in mode Transmitter end
     if( ( tmpFlag != RESET ) && ( tmpItSource != RESET ) )
     {
-        if( ( UartHandle.State == HAL_UART_STATE_BUSY_RX ) || UartHandle.State == HAL_UART_STATE_BUSY_TX_RX )
+        if( ( UartHandle.gState == HAL_UART_STATE_BUSY_RX ) || UartHandle.gState == HAL_UART_STATE_BUSY_TX_RX )
         {
-            UartHandle.State = HAL_UART_STATE_BUSY_TX_RX;
+            UartHandle.gState = HAL_UART_STATE_BUSY_TX_RX;
         }
     }
     // [END] Workaround to solve an issue with the HAL drivers not managing the uart state correctly.
