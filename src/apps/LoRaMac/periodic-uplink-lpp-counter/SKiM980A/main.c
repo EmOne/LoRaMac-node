@@ -316,7 +316,7 @@ int main( void )
     TimerSetValue( &Led4Timer, 25 );
 
     TimerInit( &Led2Timer, OnLed2TimerEvent );
-    TimerSetValue( &Led2Timer, 500 );
+    TimerSetValue( &Led2Timer, 1000 );
     TimerStart(&Led2Timer);
 
     TimerInit( &LedBeaconTimer, OnLedBeaconTimerEvent );
@@ -379,9 +379,9 @@ int main( void )
             BoardLowPowerHandler( );
 
         }
-        
-        
+
         CRITICAL_SECTION_END( );
+        
     }
 }
 
@@ -535,7 +535,7 @@ static void PrepareTxFrame( void )
     // AppData.BufferSize = CayenneLppGetSize( );
 
    /* Test uplink WKUP and IO2 */
-
+    
     uplink_buffer[0U]            = in_cnt >> 24U;
     uplink_buffer[1U]            = in_cnt >> 16U;
     uplink_buffer[2U]            = in_cnt >> 8U;
@@ -560,7 +560,7 @@ static void PrepareTxFrame( void )
         {
             NvmmWrite(uplink_buffer, APP_SIZE, 0x0FF8);
         }
-        
+        in_out_cnt = 0;
     }
 }
 
@@ -646,6 +646,7 @@ static void OnLed4TimerEvent( void* context )
  * Function executed on Led 2 Timeout event
  */
 bool IsArc = false;
+
 static void OnLed2TimerEvent( void* context )
 {
     TimerStop( &Led2Timer );
@@ -654,18 +655,23 @@ static void OnLed2TimerEvent( void* context )
 
     uint8_t potiLevel = BoardGetPotiLevel();
     
-    if(potiLevel < 50 && !IsArc)
+    if(potiLevel < 75)
     {
         IsArc = true;
         OnIO2Event(NULL);
         printf("Arc lvl: %d\n", potiLevel);
-    } else if (potiLevel > 50 && IsArc)
+        
+        //TODO: TOGGLE LED BLINK
+        GpioToggle(&Io1);
+
+    } else if (potiLevel > 75 && IsArc)
     {
         IsArc = false;
         printf("Arc lvl: %d\n", potiLevel);
+        //TODO: LED OFF
+        GpioWrite( &Io1, 0 );
     }
-
-
+    
     TimerStart( &Led2Timer );
 }
 
@@ -698,22 +704,22 @@ void OnWKUPEvent(void *context)
     
     CRITICAL_SECTION_BEGIN( );
     
-    TimerStop( &TxTimer );
+    // TimerStop( &TxTimer );
     IsStopMode = 1U;
 
     while (--timeout > 0x0);
     
     in_cnt++;
 
-    IsTxFramePending = 1;
+    // IsTxFramePending = 1;
 
     CRITICAL_SECTION_END( ) ;
     
     printf("In : %ld\n", in_cnt);
     
     // Schedule next transmission
-    TimerSetValue( &TxTimer, TxPeriodicity );
-    TimerStart( &TxTimer );
+    // TimerSetValue( &TxTimer, TxPeriodicity );
+    // TimerStart( &TxTimer );
 }
 
 /*!
@@ -733,7 +739,7 @@ void OnIO2Event(void *context)
     
     CRITICAL_SECTION_BEGIN( );
     
-    TimerStop( &TxTimer );
+    // TimerStop( &TxTimer );
     IsStopMode = 2U;
     
     // while (--timeout > 0);
@@ -741,13 +747,13 @@ void OnIO2Event(void *context)
     in_out_cnt++;
 
     // read/write input/output
-    IsTxFramePending = 1;
+    // IsTxFramePending = 1;
 
     CRITICAL_SECTION_END( ) ;
 
     printf("In Out: %ld\n", in_out_cnt);
 
     // Schedule next transmission
-    TimerSetValue( &TxTimer, TxPeriodicity );
-    TimerStart( &TxTimer );
+    // TimerSetValue( &TxTimer, TxPeriodicity );
+    // TimerStart( &TxTimer );
 }   

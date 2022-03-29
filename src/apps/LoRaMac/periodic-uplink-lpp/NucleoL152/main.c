@@ -450,14 +450,26 @@ static void PrepareTxFrame( void )
     uint8_t channel = 0;
 
     AppData.Port = LORAWAN_APP_PORT;
-
+#if 0
     CayenneLppReset( );
     CayenneLppAddDigitalInput( channel++, AppLedStateOn );
     CayenneLppAddAnalogInput( channel++, BoardGetBatteryLevel( ) * 100 / 254 );
 
     CayenneLppCopy( AppData.Buffer );
     AppData.BufferSize = CayenneLppGetSize( );
+#else
 
+    AppData.Buffer[0] = 0x0;
+    AppData.Buffer[1] = 0x0;
+    AppData.Buffer[2] = 0x0;
+    AppData.Buffer[3] = 0x01;
+    AppData.Buffer[4] = 0x0;
+    AppData.Buffer[5] = 0x0;
+    AppData.Buffer[6] = 0x0;
+    AppData.Buffer[7] = 0x01;
+    AppData.Buffer[8] = BoardGetBatteryLevel( ) * 100 / 254;
+    AppData.BufferSize = 9;
+#endif
     if( LmHandlerSend( &AppData, LmHandlerParams.IsTxConfirmed ) == LORAMAC_HANDLER_SUCCESS )
     {
         // Switch LED 1 ON

@@ -267,7 +267,7 @@ void BoardGetUniqueId( uint8_t *id )
 /*!
  * Potentiometer max and min levels definition
  */
-#define POTI_MAX_LEVEL 900
+#define POTI_MAX_LEVEL 3000
 #define POTI_MIN_LEVEL 10
 
 uint8_t BoardGetPotiLevel( void )
