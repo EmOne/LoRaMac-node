@@ -64,28 +64,28 @@ extern "C"
 #define CHANNEL_PLAN_GROUP_AS923_3                  3
 
 /*!
- * Channel plan group AS923-1
+ * Channel plan group AS923-4
+ * AS923_FREQ_OFFSET = -5.90MHz
+ */
+#define CHANNEL_PLAN_GROUP_AS923_4                  4
+
+/*!
+ * Channel plan group AS923-1 for Japan - channels 24 to 38 Listen Before Talk
  * AS923_FREQ_OFFSET = 0
  */
-#define CHANNEL_PLAN_GROUP_AS923_1                  1
+#define CHANNEL_PLAN_GROUP_AS923_1_JP_CH24_CH38_LBT 5
 
 /*!
- * Channel plan group AS923-2
- * AS923_FREQ_OFFSET = -1.8MHz
- */
-#define CHANNEL_PLAN_GROUP_AS923_2                  2
-
-/*!
- * Channel plan group AS923-3
- * AS923_FREQ_OFFSET = -6.6MHz
- */
-#define CHANNEL_PLAN_GROUP_AS923_3                  3
-
-/*!
- * Channel plan group AS923-1 for Japan
+ * Channel plan group AS923-1 for Japan - channels 24 to 38 Duty Cycle
  * AS923_FREQ_OFFSET = 0
  */
-#define CHANNEL_PLAN_GROUP_AS923_1_JP               4
+#define CHANNEL_PLAN_GROUP_AS923_1_JP_CH24_CH38_DC  6
+
+/*!
+ * Channel plan group AS923-1 for Japan - channels 37 to 61 Listen Before Talk + Duty Cycle
+ * AS923_FREQ_OFFSET = 0
+ */
+#define CHANNEL_PLAN_GROUP_AS923_1_JP_CH37_CH61_LBT_DC 7
 
 /*!
  * LoRaMac maximum number of channels
@@ -267,16 +267,6 @@ extern "C"
  * LoRaMac channels which are allowed for the join procedure
  */
 #define AS923_JOIN_CHANNELS                         ( uint16_t )( LC( 1 ) | LC( 2 ) )
-
-/*!
- * RSSI threshold for a free channel [dBm]
- */
-#define AS923_RSSI_FREE_TH                          -80
-
-/*!
- * Specifies the time the node performs a carrier sense
- */
-#define AS923_CARRIER_SENSE_TIME                    5
 
 /*!
  * Data rates table definition

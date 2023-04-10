@@ -413,6 +413,14 @@ static void GetTemperatureLevel( LoRaMacClassBCallback_t *callbacks, BeaconConte
     }
 }
 
+static void OnClassBMacProcessNotify( void )
+{
+    if( Ctx.LoRaMacClassBCallbacks.MacProcessNotify != NULL )
+    {
+        Ctx.LoRaMacClassBCallbacks.MacProcessNotify( );
+    }
+}
+
 static void InitClassB( void )
 {
     GetPhyParams_t getPhy;
@@ -703,10 +711,7 @@ void LoRaMacClassBBeaconTimerEvent( void* context )
     TimerStop( &Ctx.BeaconTimer );
     LoRaMacClassBEvents.Events.Beacon = 1;
 
-    if( Ctx.LoRaMacClassBCallbacks.MacProcessNotify != NULL )
-    {
-        Ctx.LoRaMacClassBCallbacks.MacProcessNotify( );
-    }
+    OnClassBMacProcessNotify( );
 #endif // LORAMAC_CLASSB_ENABLED
 }
 
@@ -966,10 +971,7 @@ void LoRaMacClassBPingSlotTimerEvent( void* context )
 #ifdef LORAMAC_CLASSB_ENABLED
     LoRaMacClassBEvents.Events.PingSlot = 1;
 
-    if( Ctx.LoRaMacClassBCallbacks.MacProcessNotify != NULL )
-    {
-        Ctx.LoRaMacClassBCallbacks.MacProcessNotify( );
-    }
+    OnClassBMacProcessNotify( );
 #endif // LORAMAC_CLASSB_ENABLED
 }
 
@@ -1100,10 +1102,7 @@ void LoRaMacClassBMulticastSlotTimerEvent( void* context )
 #ifdef LORAMAC_CLASSB_ENABLED
     LoRaMacClassBEvents.Events.MulticastSlot = 1;
 
-    if( Ctx.LoRaMacClassBCallbacks.MacProcessNotify != NULL )
-    {
-        Ctx.LoRaMacClassBCallbacks.MacProcessNotify( );
-    }
+    OnClassBMacProcessNotify( );
 #endif // LORAMAC_CLASSB_ENABLED
 }
 
@@ -1133,12 +1132,15 @@ static void LoRaMacClassBProcessMulticastSlot( void )
         case PINGSLOT_STATE_CALC_PING_OFFSET:
         {
             // Compute all offsets for every multicast slots
-            for( uint8_t i = 0; i < 4; i++ )
+            for( uint8_t i = 0; i < LORAMAC_MAX_MC_CTX; i++ )
             {
-                ComputePingOffset( Ctx.BeaconCtx.BeaconTime.Seconds,
-                                   cur->ChannelParams.Address,
-                                   cur->PingPeriod,
-                                   &( cur->PingOffset ) );
+                if( cur->ChannelParams.IsEnabled )
+                {
+                    ComputePingOffset( Ctx.BeaconCtx.BeaconTime.Seconds,
+                                       cur->ChannelParams.Address,
+                                       cur->PingPeriod,
+                                       &( cur->PingOffset ) );
+                }
                 cur++;
             }
             Ctx.MulticastSlotState = PINGSLOT_STATE_SET_TIMER;
@@ -1151,14 +1153,17 @@ static void LoRaMacClassBProcessMulticastSlot( void )
 
             for( uint8_t i = 0; i < LORAMAC_MAX_MC_CTX; i++ )
             {
-                // Calculate the next slot time for every multicast slot
-                if( CalcNextSlotTime( cur->PingOffset, cur->PingPeriod, cur->PingNb, &slotTime ) == true )
+                if( cur->ChannelParams.IsEnabled )
                 {
-                    if( ( multicastSlotTime == 0 ) || ( multicastSlotTime > slotTime ) )
+                    // Calculate the next slot time for every multicast slot
+                    if( CalcNextSlotTime( cur->PingOffset, cur->PingPeriod, cur->PingNb, &slotTime ) == true )
                     {
-                        // Update the slot time and the next multicast channel
-                        multicastSlotTime = slotTime;
-                        Ctx.PingSlotCtx.NextMulticastChannel = cur;
+                        if( ( multicastSlotTime == 0 ) || ( multicastSlotTime > slotTime ) )
+                        {
+                            // Update the slot time and the next multicast channel
+                            multicastSlotTime = slotTime;
+                            Ctx.PingSlotCtx.NextMulticastChannel = cur;
+                        }
                     }
                 }
                 cur++;
