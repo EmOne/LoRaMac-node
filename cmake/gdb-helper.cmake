@@ -61,8 +61,8 @@ function(generate_vscode_launch_openocd TARGET)
 
     # Available OpenOCD interfaces
     # Use stlink-v2-1.cfg when stlink interface is built in. Otherwise use stlink-v2.cfg
-    set(OPENOCD_INTERFACE_LIST stlink-v2-1.cfg stlink-v2.cfg)
-    set(OPENOCD_INTERFACE stlink-v2.cfg CACHE STRING "Default OPENOCD Interface is stlink-v2.cfg")
+    set(OPENOCD_INTERFACE_LIST stlink-v2-1.cfg stlink-v2.cfg stlink.cfg)
+    set(OPENOCD_INTERFACE stlink-v2.cfg CACHE STRING "Default OPENOCD Interface is stlink.cfg")
     set_property(CACHE OPENOCD_INTERFACE PROPERTY STRINGS ${OPENOCD_INTERFACE_LIST})
 
     # Available OpenOCD targets
