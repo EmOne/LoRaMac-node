@@ -50,6 +50,7 @@
 #define USE_POTENTIOMETER                           1
 #define USE_SPI                                     0
 #define USE_ENCODER                                 1
+#define USE_IREN01A0                                1
 
 /*!
  * Board MCU pins definitions
@@ -103,16 +104,20 @@
 #define DIR                                         PA_1
 #define TAMPERING                                   PA_8
 #define ALARM                                       PB_12
-#define LED_1                                       JTAG_TDO
+#if ( USE_IREN01A0 == 1 )
+#define EN                                          PB_14
+#else
 #define LED_2                                       PB_14
 #define LED_3                                       PB_13
 #define LED_4                                       PB_15
+#define LED_1                                       JTAG_TDO
 #define USER_BUTTON                                 JTAG_TDI
+#endif /* IREN01A0 */
 #else
 #define LED_2                                       PA_0
 #define LED_3                                       PA_1
 #define LED_4                                       PA_8
-#endif
+#endif /* USE_ENCODER */
 
 #if (USE_SPI == 1)
 #define SPI_MOSI                                    PB_15

@@ -72,13 +72,13 @@
 /*!
  * Indicates if the end-device is to be connected to a private or public network
  */
-#define LORAWAN_PUBLIC_NETWORK                             false
+#define LORAWAN_PUBLIC_NETWORK                             true
 
 /*!
  * IEEE Organizationally Unique Identifier ( OUI ) (big endian)
  * \remark This is unique to a company or organization
  */
-#define IEEE_OUI                                           0x00, 0x00, 0x00
+#define IEEE_OUI                                           0xCA, 0xD7, 0xDD
 
 /*!
  * Mote device IEEE EUI (big endian)

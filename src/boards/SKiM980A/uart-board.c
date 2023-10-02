@@ -234,7 +234,7 @@ uint8_t UartMcuPutChar( Uart_t *obj, uint8_t data )
 
             // Trig UART Tx interrupt to start sending the FIFO contents.
             __HAL_UART_ENABLE_IT( &UartHandle, UART_IT_TC );
-
+            // HAL_UART_TxCpltCallback( &UartHandle );
             return 0; // OK
         }
         CRITICAL_SECTION_END( );
@@ -336,6 +336,7 @@ void HAL_UART_TxCpltCallback( UART_HandleTypeDef *handle )
         //  Write one byte to the transmit data register
         // HAL_UART_Transmit_IT( &UartHandle, &TxData, 1 );
         HAL_UART_Transmit_DMA(&UartHandle, &TxData, 1);
+        // HAL_UART_Transmit(&UartHandle, &TxData, 1, 100);
     }
     CRITICAL_SECTION_END( );
     if( Uart1.IrqNotify != NULL )

@@ -66,6 +66,7 @@ typedef struct Encoder_s
     Gpio_t Direction;
     Gpio_t Tampering;
     Gpio_t Alarm;
+	Gpio_t En;
 	void ( *OnSendOneshot) ( void );
 	void ( *OnShowPulseDetect ) (  void );
 	flow_t * FlowData;
@@ -93,7 +94,7 @@ typedef void( EncoderIrqHandler )( void* context );
  *
  * \param [IN] obj  ENCODER object
  */
-void EncoderInit( Encoder_t *obj, EncoderId_t timId, PinNames pulse, PinNames dir, PinNames tampering, PinNames alarm);
+void EncoderInit( Encoder_t *obj, EncoderId_t timId, PinNames pulse, PinNames dir, PinNames tampering, PinNames alarm, PinNames en);
 
 /*!
  * \brief De-initializes the ENCODER object and MCU peripheral

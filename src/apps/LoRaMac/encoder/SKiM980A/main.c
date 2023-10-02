@@ -57,12 +57,12 @@
 /*!
  * Default datarate
  */
-#define LORAWAN_DEFAULT_DATARATE                    DR_5
+#define LORAWAN_DEFAULT_DATARATE                    DR_2
 
 /*!
  * LoRaWAN confirmed messages
  */
-#define LORAWAN_CONFIRMED_MSG_ON                    true
+#define LORAWAN_CONFIRMED_MSG_ON                    false
 
 /*!
  * LoRaWAN Adaptive Data Rate
@@ -171,7 +171,7 @@ static TimerEvent_t Led2Timer;
 /*!
  * Timer to handle the state of LED2 BLUE
  */
-//static TimerEvent_t Led1Timer;
+static TimerEvent_t Led1Timer;
 
 /*!
  * Timer to handle the passive device sleep 2 houre
@@ -570,25 +570,25 @@ static void OnLed2TimerEvent( void* context )
 /*!
  * \brief Function executed on Led 1 Timeout event
  */
-//static void OnLed1TimerEvent( void* context )
-//{
-//    TimerStop( &Led1Timer );
-//    // Switch LED 1 Toggle
-//    GpioToggle( &Led1 );
-//    WdtRefresh(&Wdt);
-//    TimerStart( &Led1Timer );
-//}
+static void OnLed1TimerEvent( void* context )
+{
+   TimerStop( &Led1Timer );
+   // Switch LED 1 Toggle
+   GpioToggle( &Led1 );
+   WdtRefresh(&Wdt);
+   TimerStart( &Led1Timer );
+}
 
 /*!
  * \brief Function executed on Led 4 Green Toggle event
  */
-// static void OnLed4Toggle( void )
-// {
-//     // Switch LED 4 Toggle
-//     // GpioToggle( &Led4 );
-//     GpioWrite( &Led4, 1 );
-//     TimerStart( &Led4Timer );
-// }
+static void OnLed4Toggle( void )
+{
+    // Switch LED 4 Toggle
+    // GpioToggle( &Led4 );
+    GpioWrite( &Led4, 1 );
+    TimerStart( &Led4Timer );
+}
 
 /*!
  * \brief Function executed on Led 3 Red Toggle event
@@ -604,22 +604,22 @@ static void OnLed3Toggle( void )
 /*!
  * \brief Function executed on Led 2 Blue Toggle event
  */
-// static void OnLed2Toggle( void )
-// {
-//      // Switch LED 2 Toggle
-//     // GpioToggle( &Led2 );
-//     GpioWrite( &Led2, 1 );
-//     TimerStart( &Led2Timer );
-// }
+static void OnLed2Toggle( void )
+{
+     // Switch LED 2 Toggle
+    // GpioToggle( &Led2 );
+    GpioWrite( &Led2, 1 );
+    TimerStart( &Led2Timer );
+}
 
 /*!
  * \brief Function executed on Led 1 Blue Toggle event
  */
-//static void OnLed1Toggle( void )
-//{
-//     // Switch LED 1 Toggle
-//    GpioToggle( &Led1 );
-//}
+static void OnLed1Toggle( void )
+{
+    // Switch LED 1 Toggle
+   GpioToggle( &Led1 );
+}
 
 // static void OnPassiveSleepTimer(void* context)
 // {
@@ -1285,13 +1285,13 @@ int main( void )
                 TimerInit( &Led2Timer, OnLed2TimerEvent );
                 TimerSetValue( &Led2Timer, 25 );
 
-//                TimerInit( &Led1Timer, OnLed1TimerEvent );
-//                TimerSetValue( &Led1Timer, 500 );
-//                TimerStart(&Led1Timer);
+               TimerInit( &Led1Timer, OnLed1TimerEvent );
+               TimerSetValue( &Led1Timer, 500 );
+            //    TimerStart(&Led1Timer);
 
                 TimerInit( &WdtTimer, OnWdtTimerEvent );
                 TimerSetValue( &WdtTimer, 500 );
-                TimerStart(&WdtTimer);
+                // TimerStart(&WdtTimer);
 
                 mibReq.Type = MIB_PUBLIC_NETWORK;
                 mibReq.Param.EnablePublicNetwork = LORAWAN_PUBLIC_NETWORK;

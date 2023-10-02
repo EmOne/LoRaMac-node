@@ -1685,7 +1685,7 @@ static void OnTxDelayedTimerEvent( void* context )
         {
             // Stop retransmission attempt
             MacCtx.McpsConfirm.Datarate = MacCtx.NvmCtx->MacParams.ChannelsDatarate;
-            MacCtx.McpsConfirm.NbRetries = MacCtx.AckTimeoutRetriesCounter;
+            MacCtx.McpsConfirm.NbTrans = MacCtx.AckTimeoutRetriesCounter;
             MacCtx.McpsConfirm.Status = LORAMAC_EVENT_INFO_STATUS_TX_DR_PAYLOAD_SIZE_ERROR;
             LoRaMacConfirmQueueSetStatusCmn( LORAMAC_EVENT_INFO_STATUS_TX_DR_PAYLOAD_SIZE_ERROR );
             StopRetransmission( );
@@ -2597,7 +2597,7 @@ LoRaMacStatus_t PrepareFrame( LoRaMacHeader_t* macHdr, LoRaMacFrameCtrl_t* fCtrl
             MacCtx.TxMsg.Message.Data.FHDR.FCnt = ( uint16_t ) fCntUp;
 
             // Reset confirm parameters
-            MacCtx.McpsConfirm.NbRetries = 0;
+            MacCtx.McpsConfirm.NbTrans = 0;
             MacCtx.McpsConfirm.AckReceived = false;
             MacCtx.McpsConfirm.UpLinkCounter = fCntUp;
 
@@ -2983,7 +2983,7 @@ static void AckTimeoutRetriesFinalize( void )
         MacCtx.NodeAckRequested = false;
         MacCtx.McpsConfirm.AckReceived = false;
     }
-    MacCtx.McpsConfirm.NbRetries = MacCtx.AckTimeoutRetriesCounter;
+    MacCtx.McpsConfirm.NbTrans = MacCtx.AckTimeoutRetriesCounter;
 }
 
 static void CallNvmCtxCallback( LoRaMacNvmCtxModule_t module )

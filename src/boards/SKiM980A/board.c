@@ -165,11 +165,13 @@ void BoardInitMcu( void )
 #if ( USE_POTENTIOMETER == 0 )
         GpioWrite( &Led1, 0 );
 #endif
+#if ( USE_IREN01A0 == 0)
         GpioInit( &USR1, USER_BUTTON, PIN_INPUT, PIN_PUSH_PULL, PIN_PULL_DOWN, 0 );
         GpioInit( &Led1, LED_1, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
         GpioInit( &Led2, LED_2, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
         GpioInit( &Led3, LED_3, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
         GpioInit( &Led4, LED_4, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+#endif /* USE_IREN01A0 */
 
         BoardUnusedIoInit( );
         if( GetBoardPowerSource( ) == BATTERY_POWER )
@@ -190,10 +192,12 @@ void BoardInitMcu( void )
 
 #if (USE_ENCODER == 1)
     //Encoder initialized
-    EncoderInit(&Encoder, TIM_2, PULSE, DIR, TAMPERING, ALARM);
+    EncoderInit(&Encoder, TIM_2, PULSE, DIR, TAMPERING, ALARM, EN);
+#if ( USE_IREN01A0 == 0)
     GpioWrite( &Led2, 0 );
     GpioWrite( &Led3, 0 );
     GpioWrite( &Led4, 0 );
+#endif /*  USE_IREN01A0 */
 #endif
 
     if( McuInitialized == false )
@@ -208,7 +212,7 @@ void BoardInitMcu( void )
 
     }
     //Watchdog initialize
-    WdtInit( &Wdt, WDT_IWDG);
+    // WdtInit( &Wdt, WDT_IWDG);
 }
 
 void BoardResetMcu( void )
@@ -255,9 +259,9 @@ void BoardGetUniqueId( uint8_t *id )
     id[5] = ( ( *( uint32_t* )ID1 )+ ( *( uint32_t* )ID3 ) ) >> 8;
     id[4] = ( ( *( uint32_t* )ID1 )+ ( *( uint32_t* )ID3 ) );
     id[3] = ( ( *( uint32_t* )ID2 ) ) >> 24;
-    id[2] = ( ( *( uint32_t* )ID2 ) ) >> 16;
-    id[1] = ( ( *( uint32_t* )ID2 ) ) >> 8;
-    id[0] = ( ( *( uint32_t* )ID2 ) );
+    id[2] = 0xDD; //( ( *( uint32_t* )ID2 ) ) >> 16;
+    id[1] = 0xD7; //( ( *( uint32_t* )ID2 ) ) >> 8;
+    id[0] = 0xCA; //( ( *( uint32_t* )ID2 ) );
 }
 
 /*!
