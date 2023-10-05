@@ -232,13 +232,20 @@ uint8_t UartMcuPutChar( Uart_t *obj, uint8_t data )
             FifoPush( &obj->FifoTx, TxData );
             CRITICAL_SECTION_END( );
 
-            // Trig UART Tx interrupt to start sending the FIFO contents.
-            __HAL_UART_ENABLE_IT( &UartHandle, UART_IT_TC );
-            // HAL_UART_TxCpltCallback( &UartHandle );
-            return 0; // OK
+            
+            
+            // return 0; // OK
+        } else {
+
         }
+        
         CRITICAL_SECTION_END( );
-        return 1; // Busy
+        
+        // Trig UART Tx interrupt to start sending the FIFO contents.
+        __HAL_UART_ENABLE_IT( &UartHandle, UART_IT_TC );
+
+        // return 1; // Busy
+        return 0; // OK
     }
 }
 

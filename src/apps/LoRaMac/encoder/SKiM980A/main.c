@@ -599,6 +599,7 @@ static void OnLed3Toggle( void )
     // GpioToggle( &Led3 );
     GpioWrite( &Led3, 1 );
     TimerStart( &Led3Timer );
+    IsMacProcessPending = 1;
 }
 
 /*!
@@ -633,6 +634,7 @@ static void OnLed1Toggle( void )
  */
 static void OnTxOneShotPacketEvent( )
 {
+    IsMacProcessPending = 1;
     OnTxNextPacketTimerEvent(NULL);
 }
 
@@ -1172,7 +1174,7 @@ int main( void )
 
     LoRaMacInitialization( &macPrimitives, &macCallbacks, ACTIVE_REGION );
 
-    // Encoder.OnSendOneshot = OnTxOneShotPacketEvent;
+    Encoder.OnSendOneshot = OnTxOneShotPacketEvent;
     Encoder.OnShowPulseDetect = OnLed3Toggle;
     Encoder.ConfigData->isActiveMode = 1;
 
@@ -1289,8 +1291,8 @@ int main( void )
                TimerSetValue( &Led1Timer, 500 );
             //    TimerStart(&Led1Timer);
 
-                TimerInit( &WdtTimer, OnWdtTimerEvent );
-                TimerSetValue( &WdtTimer, 500 );
+                // TimerInit( &WdtTimer, OnWdtTimerEvent );
+                // TimerSetValue( &WdtTimer, 500 );
                 // TimerStart(&WdtTimer);
 
                 mibReq.Type = MIB_PUBLIC_NETWORK;

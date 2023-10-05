@@ -613,7 +613,7 @@ void LpmEnterStopMode( void)
     // Enable the fast wake up from Ultra low power mode
     HAL_PWREx_EnableFastWakeUp( );
 
-    // HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1);
+    HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1);
 
     // SystemClockMCU_STOP_wRTC();
 

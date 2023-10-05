@@ -153,7 +153,7 @@ void OnTamperingIrq( void* context )
 {
     CRITICAL_SECTION_BEGIN();
     // Encoder_t *obj = (Encoder_t *) context;
-#if ( USE_GPIO )
+#if 1
     if (GpioRead(&Encoder.Tampering) == GPIO_PIN_RESET) 
 #else
     if (GpioRead(&Encoder.En) == GPIO_PIN_SET) 
@@ -168,7 +168,7 @@ void OnTamperingIrq( void* context )
             flow.status &= ~TAMPER_FLAG;
 		    printf( "\r\n###### ===== Tampering released ==== ######\r\n\r\n" );
 #ifndef USE_GPIO
-            // HAL_TIM_Encoder_Stop_IT(&TimHandle, TIM_CHANNEL_1);
+            HAL_TIM_Encoder_Stop_IT(&TimHandle, TIM_CHANNEL_ALL);
 #endif
         		
     }	
@@ -238,7 +238,7 @@ void OnPulseDetected( void* context )
 #else
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-	CRITICAL_SECTION_BEGIN();
+	// CRITICAL_SECTION_BEGIN();
 	if (htim->Instance == TIM2) {
         // uint32_t current = 0;
 #if ( USE_GPIO )        
@@ -249,11 +249,11 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 		{
             flow.status |= DIR_FLAG;
 		 	flow.fwd_cnt++;
-            printf( "\r\nForward cnt : %ld\r\n\r\n",  flow.fwd_cnt);
+            // printf( "\r\nForward cnt : %ld\r\n\r\n",  flow.fwd_cnt);
 		} else {
             flow.status &= ~DIR_FLAG;
 		 	flow.rev_cnt++;
-            printf( "\r\nBackward cnt : %ld\r\n\r\n",  flow.rev_cnt);
+            // printf( "\r\nBackward cnt : %ld\r\n\r\n",  flow.rev_cnt);
 		}
         flow.rate++;
         // current = HAL_GetTick(); //HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
@@ -275,7 +275,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
             Encoder.OnSendOneshot(  );  
         }
     }
-    CRITICAL_SECTION_END();
+    // CRITICAL_SECTION_END();
 }
 
 void TIM2_IRQHandler( void )
