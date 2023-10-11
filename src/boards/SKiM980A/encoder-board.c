@@ -62,7 +62,7 @@ void EncoderInit( Encoder_t *obj, EncoderId_t timId, PinNames pulse, PinNames di
         if( timId == TIM_2 )
         {
             GpioInit( &obj->Tampering, tampering, PIN_INPUT, PIN_PUSH_PULL, PIN_PULL_UP, 1 );
-            GpioSetInterrupt( &obj->Tampering, IRQ_RISING_FALLING_EDGE, IRQ_HIGH_PRIORITY, EncoderIrq[0]);
+            GpioSetInterrupt( &obj->Tampering, IRQ_RISING_FALLING_EDGE, IRQ_VERY_HIGH_PRIORITY, EncoderIrq[0]);
             // GpioSetContext(&obj->Tampering, &obj);
             GpioInit( &obj->Alarm, alarm, PIN_INPUT, PIN_PUSH_PULL, PIN_PULL_UP, 1 );
             GpioSetInterrupt( &obj->Alarm, IRQ_FALLING_EDGE, IRQ_HIGH_PRIORITY, EncoderIrq[1]);
@@ -268,13 +268,13 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
         Encoder.OnShowPulseDetect();
     }
 
-    if(Encoder.ConfigData->isActiveMode == 0) {
-        Encoder.ConfigData->isActiveMode = 1;
-        if (Encoder.OnSendOneshot != NULL)
-        {
-            Encoder.OnSendOneshot(  );  
-        }
-    }
+    // if(Encoder.ConfigData->isActiveMode == 0) {
+    //     Encoder.ConfigData->isActiveMode = 1;
+    //     if (Encoder.OnSendOneshot != NULL)
+    //     {
+    //         Encoder.OnSendOneshot(  );  
+    //     }
+    // }
     // CRITICAL_SECTION_END();
 }
 
