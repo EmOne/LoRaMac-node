@@ -642,6 +642,7 @@ static void OnWdtTimerEvent( void* context )
 {
     TimerStop(&WdtTimer);
     WdtRefresh(&Wdt);
+    OnPeriodElapsedCallback();
     GpioToggle( &Led1 );
     TimerStart(&WdtTimer);
 }
@@ -1287,13 +1288,13 @@ int main( void )
                 TimerInit( &Led2Timer, OnLed2TimerEvent );
                 TimerSetValue( &Led2Timer, 25 );
 
-               TimerInit( &Led1Timer, OnLed1TimerEvent );
-               TimerSetValue( &Led1Timer, 500 );
+            //    TimerInit( &Led1Timer, OnLed1TimerEvent );
+            //    TimerSetValue( &Led1Timer, 500 );
             //    TimerStart(&Led1Timer);
 
-                // TimerInit( &WdtTimer, OnWdtTimerEvent );
-                // TimerSetValue( &WdtTimer, 500 );
-                // TimerStart(&WdtTimer);
+                TimerInit( &WdtTimer, OnWdtTimerEvent );
+                TimerSetValue( &WdtTimer, 500 );
+                TimerStart(&WdtTimer);
 
                 mibReq.Type = MIB_PUBLIC_NETWORK;
                 mibReq.Param.EnablePublicNetwork = LORAWAN_PUBLIC_NETWORK;

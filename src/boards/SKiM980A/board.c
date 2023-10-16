@@ -212,7 +212,7 @@ void BoardInitMcu( void )
 
     }
     //Watchdog initialize
-    // WdtInit( &Wdt, WDT_IWDG);
+    WdtInit( &Wdt, WDT_IWDG);
 }
 
 void BoardResetMcu( void )

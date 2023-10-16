@@ -47,12 +47,50 @@ static TIM_HandleTypeDef TimHandle;
 #endif
 extern Gpio_t Led3;
 static uint8_t EncoderInitialized = 0;
+uint32_t uwDirection = 0;
+int16_t round_msb = 0;
+int32_t max_lsb = 79;
+int16_t counter = 0, last_counter = 0;
+int position = 0, speed = 0;
+static int indx = 0;
+
 /*!
  * Timer to handle the application data transmission duty cycle
  */
 // static TimerEvent_t StorePacketTimer;
+static void update_encoder(flow_t *enc, TIM_HandleTypeDef *htim);
+static void update_encoder(flow_t *enc, TIM_HandleTypeDef *htim) {
+	uint32_t temp_counter = __HAL_TIM_GET_COUNTER(htim);
+	static uint8_t first_time = 0;
+	if (!first_time) {
+		enc->rate = 0;
+		first_time = 1;
+	} else {
+		if (temp_counter == enc->last) {
+			enc->rate = 0;
+		} else if (temp_counter > enc->last) {
+			if (__HAL_TIM_IS_TIM_COUNTING_DOWN(htim)) {
+				enc->rate = -enc->last
+						- (__HAL_TIM_GET_AUTORELOAD(htim) - temp_counter);
+			} else {
+				enc->rate = temp_counter - enc->last;
+			}
+		} else {
+			if (__HAL_TIM_IS_TIM_COUNTING_DOWN(htim)) {
+				enc->rate = temp_counter - enc->last;
+			} else {
+				enc->rate = temp_counter
+						+ (__HAL_TIM_GET_AUTORELOAD(htim) - enc->last);
+			}
+		}
+	}
 
-void EncoderInit( Encoder_t *obj, EncoderId_t timId, PinNames pulse, PinNames dir, PinNames tampering, PinNames alarm, PinNames en)
+	enc->fwd_cnt +=  enc->rate;
+	enc->last = temp_counter;
+	enc->position = temp_counter * 360 / 80;
+}
+
+void EncoderInit(Encoder_t *obj, EncoderId_t timId, PinNames pulse, PinNames dir, PinNames tampering, PinNames alarm, PinNames en)
 {
     CRITICAL_SECTION_BEGIN( );
 
@@ -86,16 +124,16 @@ void EncoderInit( Encoder_t *obj, EncoderId_t timId, PinNames pulse, PinNames di
             TIM_MasterConfigTypeDef sMasterConfig = {0};
 
             TimHandle.Instance = TIM2;
-            TimHandle.Init.Prescaler = 1;
+            TimHandle.Init.Prescaler = 0;
             TimHandle.Init.CounterMode = TIM_COUNTERMODE_UP;
-            TimHandle.Init.Period = 0xffff;
-            TimHandle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-            sConfig.EncoderMode = TIM_ENCODERMODE_TI1;
+            TimHandle.Init.Period = max_lsb;
+            TimHandle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
+            sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
             sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
             sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
             sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
             sConfig.IC1Filter = 15;
-            sConfig.IC2Polarity = TIM_ICPOLARITY_FALLING;
+            sConfig.IC2Polarity = TIM_ICPOLARITY_RISING;
             sConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
             sConfig.IC2Prescaler = TIM_ICPSC_DIV1;
             sConfig.IC2Filter = 15;
@@ -110,7 +148,7 @@ void EncoderInit( Encoder_t *obj, EncoderId_t timId, PinNames pulse, PinNames di
 
             GpioWrite(&obj->En, GPIO_PIN_SET);
             HAL_Delay(500);
-            // HAL_TIM_Encoder_Start_IT(&TimHandle, TIM_CHANNEL_ALL);
+            //HAL_TIM_Encoder_Start(&TimHandle, TIM_CHANNEL_ALL);
     #endif
             Encoder.FlowData = &flow;
             Encoder.LastFlowData = &last_flow;
@@ -162,13 +200,13 @@ void OnTamperingIrq( void* context )
         	flow.status |= TAMPER_FLAG;
             printf( "\r\n###### ===== Tampering attached ==== ######\r\n\r\n" );
 #ifndef USE_GPIO
-		    HAL_TIM_Encoder_Start_IT(&TimHandle, TIM_CHANNEL_ALL);
+		    HAL_TIM_Encoder_Start(&TimHandle, TIM_CHANNEL_ALL);
 #endif            
 	} else {
             flow.status &= ~TAMPER_FLAG;
 		    printf( "\r\n###### ===== Tampering released ==== ######\r\n\r\n" );
 #ifndef USE_GPIO
-            HAL_TIM_Encoder_Stop_IT(&TimHandle, TIM_CHANNEL_ALL);
+            HAL_TIM_Encoder_Stop(&TimHandle, TIM_CHANNEL_ALL);
 #endif
         		
     }	
@@ -238,24 +276,32 @@ void OnPulseDetected( void* context )
 #else
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-	// CRITICAL_SECTION_BEGIN();
+	CRITICAL_SECTION_BEGIN();
 	if (htim->Instance == TIM2) {
         // uint32_t current = 0;
 #if ( USE_GPIO )        
         if (GpioRead(&Encoder.Direction) != GPIO_PIN_RESET)
 #else
-        if (__HAL_TIM_DIRECTION_STATUS(&TimHandle) != GPIO_PIN_RESET)
+        uwDirection = __HAL_TIM_DIRECTION_STATUS(&TimHandle);
+        counter = (int32_t) __HAL_TIM_GET_COUNTER(htim);
+        if (uwDirection != GPIO_PIN_RESET)
 #endif /* USE_GPIO */
 		{
             flow.status |= DIR_FLAG;
-		 	flow.fwd_cnt++;
             // printf( "\r\nForward cnt : %ld\r\n\r\n",  flow.fwd_cnt);
+            if (counter == 0 && last_counter == max_lsb ) {
+				++round_msb;
+			}
 		} else {
             flow.status &= ~DIR_FLAG;
-		 	flow.rev_cnt++;
             // printf( "\r\nBackward cnt : %ld\r\n\r\n",  flow.rev_cnt);
+            if (counter == max_lsb && last_counter == 0) {
+				--round_msb;
+			}
 		}
-        flow.rate++;
+        flow.fwd_cnt = (round_msb << 6 | counter);
+		last_counter = counter;
+        flow.position = counter / max_lsb;
         // current = HAL_GetTick(); //HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
         // float delta = (float) abs(current - flow.last);
 		// flow.rate = (uint32_t) ((1.0f / delta) * 1000.0f);
@@ -275,7 +321,21 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
     //         Encoder.OnSendOneshot(  );  
     //     }
     // }
-    // CRITICAL_SECTION_END();
+    CRITICAL_SECTION_END();
+}
+
+void OnPeriodElapsedCallback( void ) {
+    /* code */
+    // indx++;
+    // if (indx == 100)
+    // {
+        uwDirection = __HAL_TIM_DIRECTION_STATUS(&TimHandle);
+        update_encoder(&flow, &TimHandle);
+        counter = flow.fwd_cnt;
+        position = flow.position;
+        speed = flow.rate;
+    //     indx = 0;
+    // }
 }
 
 void TIM2_IRQHandler( void )

@@ -38,9 +38,9 @@ typedef enum
  * TIM object type definition
  */
 typedef struct {
-	uint32_t fwd_cnt;
-	uint32_t rev_cnt;
-	uint32_t rate;
+	int32_t fwd_cnt;
+	int32_t rev_cnt;
+	uint32_t rate;	//Speed degree per second
     uint8_t status; //[0:tampering, 1:alarm, 2:dir]
 	volatile uint16_t adc_lvl[3];
 	uint32_t adc_acc;
@@ -49,6 +49,7 @@ typedef struct {
 	uint32_t last;
 	uint8_t batt;
 	int16_t temp;
+	uint32_t position;
 } flow_t;
 
 typedef struct 
