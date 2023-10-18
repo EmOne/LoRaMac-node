@@ -40,7 +40,7 @@ typedef enum
 typedef struct {
 	int32_t fwd_cnt;
 	int32_t rev_cnt;
-	uint32_t rate;	//Speed degree per second
+	int32_t rate;	//Speed degree per second
     uint8_t status; //[0:tampering, 1:alarm, 2:dir]
 	volatile uint16_t adc_lvl[3];
 	uint32_t adc_acc;
@@ -70,6 +70,7 @@ typedef struct Encoder_s
 	Gpio_t En;
 	void ( *OnSendOneshot) ( void );
 	void ( *OnShowPulseDetect ) (  void );
+	void ( *OnArcRelease ) ( void );
 	flow_t * FlowData;
 	flow_t * LastFlowData;
 	flow_config_t * ConfigData;

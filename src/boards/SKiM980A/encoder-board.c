@@ -24,6 +24,7 @@
 #include "gpio.h"
 #include "encoder-board.h"
 #include "math.h"
+#include "lpm-board.h"
 // #include "timer.h"
 
 // #define USE_GPIO
@@ -85,6 +86,11 @@ static void update_encoder(flow_t *enc, TIM_HandleTypeDef *htim) {
 		}
 	}
 
+    if (enc->rate < 0)
+    {
+        enc->rev_cnt += enc->rate;
+    }
+    
 	enc->fwd_cnt +=  enc->rate;
 	enc->last = temp_counter;
 	enc->position = temp_counter * 360 / 80;
@@ -100,10 +106,10 @@ void EncoderInit(Encoder_t *obj, EncoderId_t timId, PinNames pulse, PinNames dir
         if( timId == TIM_2 )
         {
             GpioInit( &obj->Tampering, tampering, PIN_INPUT, PIN_PUSH_PULL, PIN_PULL_UP, 1 );
-            GpioSetInterrupt( &obj->Tampering, IRQ_RISING_FALLING_EDGE, IRQ_VERY_HIGH_PRIORITY, EncoderIrq[0]);
+            GpioSetInterrupt( &obj->Tampering, IRQ_RISING_FALLING_EDGE, IRQ_MEDIUM_PRIORITY, EncoderIrq[0]);
             // GpioSetContext(&obj->Tampering, &obj);
             GpioInit( &obj->Alarm, alarm, PIN_INPUT, PIN_PUSH_PULL, PIN_PULL_UP, 1 );
-            GpioSetInterrupt( &obj->Alarm, IRQ_FALLING_EDGE, IRQ_HIGH_PRIORITY, EncoderIrq[1]);
+            GpioSetInterrupt( &obj->Alarm, IRQ_FALLING_EDGE, IRQ_LOW_PRIORITY, EncoderIrq[1]);
             // GpioSetContext(&obj->Alarm, &obj);
             
             GpioInit( &obj->En, en, PIN_OUTPUT, PIN_PUSH_PULL, PIN_PULL_DOWN, 0 );
@@ -201,12 +207,22 @@ void OnTamperingIrq( void* context )
             printf( "\r\n###### ===== Tampering attached ==== ######\r\n\r\n" );
 #ifndef USE_GPIO
 		    HAL_TIM_Encoder_Start(&TimHandle, TIM_CHANNEL_ALL);
+            LpmSetStopMode(LPM_APPLI_ID, LPM_DISABLE);
+            if (Encoder.OnShowPulseDetect != NULL)
+            {
+                Encoder.OnShowPulseDetect();
+            }
 #endif            
 	} else {
             flow.status &= ~TAMPER_FLAG;
 		    printf( "\r\n###### ===== Tampering released ==== ######\r\n\r\n" );
 #ifndef USE_GPIO
             HAL_TIM_Encoder_Stop(&TimHandle, TIM_CHANNEL_ALL);
+            LpmSetStopMode(LPM_APPLI_ID, LPM_ENABLE);
+             if (Encoder.OnArcRelease != NULL)
+            {
+                Encoder.OnArcRelease();
+            }
 #endif
         		
     }	

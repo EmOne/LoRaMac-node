@@ -395,12 +395,21 @@ static void PrepareTxFrame( uint8_t port )
             potiPercentage = BoardGetPotiLevel( );
             vdd = BoardGetBatteryLevel( );
             AppDataSizeBackup = AppDataSize = 11;
+#if 1
+            AppDataBuffer[0] = (flow.fwd_cnt >> 24) & 0xff;
+            AppDataBuffer[1] = (flow.fwd_cnt >> 16) & 0xff;
+            AppDataBuffer[2] = (flow.fwd_cnt >> 8) & 0xff;
+            AppDataBuffer[3] = (flow.fwd_cnt) & 0xff;
+            AppDataBuffer[4] = (flow.position >> 8) & 0xff;
+            AppDataBuffer[5] = (flow.position) & 0xff;
+#else
             AppDataBuffer[0] = (flow.fwd_cnt >> 16) & 0xff;
             AppDataBuffer[1] = (flow.fwd_cnt >> 8) & 0xff;
-            AppDataBuffer[2] = (flow.fwd_cnt) & 0xff;
+            AppDataBuffer[2] = (flow.fwd_cnt >> 0) & 0xff;
             AppDataBuffer[3] = (flow.rev_cnt >> 16) & 0xff;
             AppDataBuffer[4] = (flow.rev_cnt >> 8) & 0xff;
-            AppDataBuffer[5] = (flow.rev_cnt) & 0xff;
+            AppDataBuffer[5] = (flow.rev_cnt >> 0) & 0xff;
+#endif /* USE_IREN01A0 */
             AppDataBuffer[6] = (flow.rate == 0) ? (uint8_t)(flow.rate & 0xff) : ((uint8_t)(((float) flow.rate / (float) config.sampling) / 10.0f) & 0xff);
             AppDataBuffer[7] = ((flow.status << 4)  & 0xf0) | ((potiPercentage >> 8) & 0x0f);
             AppDataBuffer[8] = potiPercentage & 0xff;
@@ -419,7 +428,7 @@ static void PrepareTxFrame( uint8_t port )
             AppDataBuffer[1] = potiPercentage;
             AppDataBuffer[2] = ( vdd >> 8 ) & 0xFF;
             AppDataBuffer[3] = vdd & 0xFF;
-#endif
+#endif /* USE_ENCODER */
         }
         break;
     case 224:
@@ -553,8 +562,11 @@ static void OnLed4TimerEvent( void* context )
 static void OnLed3TimerEvent( void* context )
 {
     TimerStop( &Led3Timer );
-    // Switch LED 2 OFF
-    GpioWrite( &Led3, 0 );
+    // Switch LED 3 OFF
+    // GpioWrite( &Led3, 0 );
+    GpioToggle( &Led3 );
+    TimerStart( &Led3Timer );
+    IsMacProcessPending = 1;
 }
 
 /*!
@@ -574,8 +586,9 @@ static void OnLed1TimerEvent( void* context )
 {
    TimerStop( &Led1Timer );
    // Switch LED 1 Toggle
-   GpioToggle( &Led1 );
-   WdtRefresh(&Wdt);
+   OnPeriodElapsedCallback();
+//    GpioToggle( &Led1 );
+//    WdtRefresh(&Wdt);
    TimerStart( &Led1Timer );
 }
 
@@ -602,6 +615,15 @@ static void OnLed3Toggle( void )
     IsMacProcessPending = 1;
 }
 
+/*!
+ * \brief Function executed on Led 3 Red Toggle event
+ */
+static void OnLed3Off( void )
+{
+    TimerStop( &Led3Timer );
+     // Switch LED 3 Off
+    GpioWrite( &Led3, 0 );
+}
 /*!
  * \brief Function executed on Led 2 Blue Toggle event
  */
@@ -642,7 +664,6 @@ static void OnWdtTimerEvent( void* context )
 {
     TimerStop(&WdtTimer);
     WdtRefresh(&Wdt);
-    OnPeriodElapsedCallback();
     GpioToggle( &Led1 );
     TimerStart(&WdtTimer);
 }
@@ -838,6 +859,7 @@ static void McpsIndication( McpsIndication_t *mcpsIndication )
                     printf( "\r\n###### ===== User setting CTXS STORED ==== ######\r\n\r\n" );
                     printf( "Fwd cnt : %08lX\r\n", flow.fwd_cnt );
                     printf( "Rev cnt : %08lX\r\n", flow.rev_cnt );
+                    printf( "Position : %08lX\r\n", flow.position );
                     printf( "Sampling : %02X\r\n", config.sampling );
                     printf( "Digital alarm enable : %02X\r\n", config.digital_alarm );
                     printf( "Analog alarm lvl. : %04X\r\n\r\n", config.analog_alarm );
@@ -1177,6 +1199,7 @@ int main( void )
 
     Encoder.OnSendOneshot = OnTxOneShotPacketEvent;
     Encoder.OnShowPulseDetect = OnLed3Toggle;
+    Encoder.OnArcRelease = OnLed3Off;
     Encoder.ConfigData->isActiveMode = 1;
 
     DeviceState = DEVICE_STATE_RESTORE;
@@ -1283,18 +1306,18 @@ int main( void )
                 TimerSetValue( &Led4Timer, 25 );
 
                 TimerInit( &Led3Timer, OnLed3TimerEvent );
-                TimerSetValue( &Led3Timer, 1 );
+                TimerSetValue( &Led3Timer, 500 );
 
                 TimerInit( &Led2Timer, OnLed2TimerEvent );
                 TimerSetValue( &Led2Timer, 25 );
 
-            //    TimerInit( &Led1Timer, OnLed1TimerEvent );
-            //    TimerSetValue( &Led1Timer, 500 );
-            //    TimerStart(&Led1Timer);
+               TimerInit( &Led1Timer, OnLed1TimerEvent );
+               TimerSetValue( &Led1Timer, 1 );
+               TimerStart(&Led1Timer);
 
-                TimerInit( &WdtTimer, OnWdtTimerEvent );
-                TimerSetValue( &WdtTimer, 500 );
-                TimerStart(&WdtTimer);
+                // TimerInit( &WdtTimer, OnWdtTimerEvent );
+                // TimerSetValue( &WdtTimer, 500 );
+                // TimerStart(&WdtTimer);
 
                 mibReq.Type = MIB_PUBLIC_NETWORK;
                 mibReq.Param.EnablePublicNetwork = LORAWAN_PUBLIC_NETWORK;

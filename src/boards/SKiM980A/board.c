@@ -171,6 +171,9 @@ void BoardInitMcu( void )
         GpioInit( &Led2, LED_2, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
         GpioInit( &Led3, LED_3, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
         GpioInit( &Led4, LED_4, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+#else
+        GpioInit( &Led3, LED_3, PIN_OUTPUT, PIN_PUSH_PULL, PIN_PULL_UP, GPIO_PIN_SET );
+        GpioWrite( &Led3, GPIO_PIN_SET );
 #endif /* USE_IREN01A0 */
 
         BoardUnusedIoInit( );
@@ -197,8 +200,10 @@ void BoardInitMcu( void )
     GpioWrite( &Led2, 0 );
     GpioWrite( &Led3, 0 );
     GpioWrite( &Led4, 0 );
-#endif /*  USE_IREN01A0 */
-#endif
+#else
+    GpioWrite( &Led3, GPIO_PIN_RESET );
+#endif /* USE_IREN01A0 */
+#endif /* USE_ENCODER */
 
     if( McuInitialized == false )
     {
@@ -212,7 +217,7 @@ void BoardInitMcu( void )
 
     }
     //Watchdog initialize
-    WdtInit( &Wdt, WDT_IWDG);
+    // WdtInit( &Wdt, WDT_IWDG);
 }
 
 void BoardResetMcu( void )
@@ -415,7 +420,7 @@ static void BoardUnusedIoInit( void )
 
     GpioInit( &ioPin, JTAG_TMS, PIN_ANALOGIC, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
     GpioInit( &ioPin, JTAG_TCK, PIN_ANALOGIC, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
-    GpioInit( &ioPin, JTAG_TDI, PIN_ANALOGIC, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
+    // GpioInit( &ioPin, JTAG_TDI, PIN_ANALOGIC, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
     GpioInit( &ioPin, JTAG_TDO, PIN_ANALOGIC, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
     GpioInit( &ioPin, JTAG_NRST, PIN_ANALOGIC, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
 #endif

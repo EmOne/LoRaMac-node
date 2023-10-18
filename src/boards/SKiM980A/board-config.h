@@ -99,13 +99,16 @@
 #else
 #define LED_1                                       PA_3
 #endif
+
 #if ( USE_ENCODER )
 #define PULSE                                       PA_0
 #define DIR                                         PA_1
 #define TAMPERING                                   PA_8
 #define ALARM                                       PB_12
+
 #if ( USE_IREN01A0 == 1 )
 #define EN                                          PB_14
+#define LED_3                                       JTAG_TDI
 #else
 #define LED_2                                       PB_14
 #define LED_3                                       PB_13
@@ -113,6 +116,7 @@
 #define LED_1                                       JTAG_TDO
 #define USER_BUTTON                                 JTAG_TDI
 #endif /* IREN01A0 */
+
 #else
 #define LED_2                                       PA_0
 #define LED_3                                       PA_1
