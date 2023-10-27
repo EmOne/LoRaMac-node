@@ -32,8 +32,11 @@ list(APPEND ${PROJECT_NAME}_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/lpm-board.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/rtc-board.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/spi-board.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/stmCriticalSection.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/sx1272-board.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/sysIrqHandlers.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/touchsensing.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tsl_user.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/uart-board.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/utilities.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/cmsis/arm-gcc/startup_stm32l151xba.s"
@@ -47,6 +50,8 @@ list(APPEND ${PROJECT_NAME}_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_flash_ex.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_gpio.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_i2c.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_pcd.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_pcd_ex.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_pwr.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_pwr_ex.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_rcc.c"
@@ -55,12 +60,28 @@ list(APPEND ${PROJECT_NAME}_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_rtc_ex.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_spi.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_spi_ex.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_tim.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_tim_ex.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_hal_uart.c"
+    # "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Src/stm32l1xx_ll_usb.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_touchkey.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_time.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_time_stm32l1xx.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_object.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_linrot.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_globals.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_filter.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_ecs.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_dxs.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_acq.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_acq_stm32l1xx_sw.c"
+    # "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_acq_stm32l1xx_hw.c"
 )
 
 add_library(${PROJECT_NAME} OBJECT EXCLUDE_FROM_ALL ${${PROJECT_NAME}_SOURCES})
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC -DUSE_HAL_DRIVER -DSTM32L151xBA)
+target_compile_definitions(${PROJECT_NAME} PUBLIC -DUSE_HAL_DRIVER -DUSE_STDPERIPH_DRIVER -DSTM32L151xBA -DTSLPRM_STM32L1XX_SW_ACQ)
 
 # Add define if debbuger support is enabled
 target_compile_definitions(${PROJECT_NAME} PUBLIC $<$<BOOL:${USE_DEBUGGER}>:USE_DEBUGGER>)
@@ -74,6 +95,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32
     ${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/cmsis
     ${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/inc
     $<TARGET_PROPERTY:board,INTERFACE_INCLUDE_DIRECTORIES>
     $<TARGET_PROPERTY:system,INTERFACE_INCLUDE_DIRECTORIES>
     $<TARGET_PROPERTY:radio,INTERFACE_INCLUDE_DIRECTORIES>

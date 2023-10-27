@@ -52,8 +52,8 @@ extern "C"
  *         Remove the original jumpers for that.
  *         On SKiM980A X5 is the 20 pin header close to the DIP SW and Buttons
  */
-#define USE_POTENTIOMETER                           1
-
+#define USE_POTENTIOMETER                           0
+#define USE_TS                                      1
 
 /*!
  * Board MCU pins definitions
@@ -99,12 +99,18 @@ extern "C"
 
 #if ( USE_POTENTIOMETER == 1 )
 #define POTI                                        PA_3
+#elif ( USE_TS == 1)
+#define LED_1                                       NC
+#define LED_2                                       PA_15
+#define LED_3                                       NC
+#define LED_4                                       PA_8
 #else
 #define LED_1                                       PA_3
-#endif
 #define LED_2                                       PA_0
 #define LED_3                                       PA_1
 #define LED_4                                       PA_8
+#endif
+
 
 // Debug pins definition.
 #define RADIO_DBG_PIN_TX                            NC

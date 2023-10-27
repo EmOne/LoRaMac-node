@@ -36,6 +36,7 @@
 #include "rtc-board.h"
 #include "sx1272-board.h"
 #include "board.h"
+#include "touchsensing.h"
 
 /*!
  * Unique Devices IDs register set ( STM32L1xxx )
@@ -103,7 +104,7 @@ void BoardCriticalSectionEnd( uint32_t *mask )
 
 void BoardInitPeriph( void )
 {
-
+    MX_TOUCHSENSING_Init();
 }
 
 void BoardInitMcu( void )
@@ -114,7 +115,7 @@ void BoardInitMcu( void )
 
         // LEDs
 #if ( USE_POTENTIOMETER == 0 )
-        GpioInit( &Led1, LED_1, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+        GpioInit( &Led1, LED_1, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );     
 #endif
         GpioInit( &Led2, LED_2, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
         GpioInit( &Led3, LED_3, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
@@ -149,9 +150,9 @@ void BoardInitMcu( void )
     {
         SystemClockReConfig( );
     }
-
+#ifndef USE_TS
     AdcInit( &Adc, POTI );
-
+#endif
     SpiInit( &SX1272.Spi, SPI_1, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, NC );
     SX1272IoInit( );
 
@@ -213,8 +214,8 @@ void BoardGetUniqueId( uint8_t *id )
 uint8_t BoardGetPotiLevel( void )
 {
     uint8_t potiLevel = 0;
+#ifndef USE_TS
     uint16_t vpoti = 0;
-
     // Read the current potentiometer setting
     vpoti = AdcReadChannel( &Adc , ADC_CHANNEL_3 );
 
@@ -232,6 +233,20 @@ uint8_t BoardGetPotiLevel( void )
         // if the value is in the area, calculate the percentage value
         potiLevel = ( ( vpoti - POTI_MIN_LEVEL ) * 100 ) / POTI_MAX_LEVEL;
     }
+#endif
+    
+    tsl_user_status_t status =  tsl_user_Exec();
+	 switch (status) {
+		case TSL_USER_STATUS_OK_ECS_ON:
+			GpioToggle(&Led2);
+			break;
+		case TSL_USER_STATUS_OK_ECS_OFF:
+		case TSL_USER_STATUS_OK_NO_ECS:
+		case TSL_USER_STATUS_BUSY:
+		default:
+			GpioWrite(&Led2, 0);
+			break;
+		}
     return potiLevel;
 }
 

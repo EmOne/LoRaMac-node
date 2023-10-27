@@ -23,12 +23,12 @@ cmake_minimum_required(VERSION 3.6)
 #---------------------------------------------------------------------------------------
 
 # Allow switching of sub projects
-set(SUB_PROJECT_LIST periodic-uplink-lpp fuota-test-01)
+set(SUB_PROJECT_LIST periodic-uplink-lpp fuota-test-01 touch-sensing)
 set(SUB_PROJECT periodic-uplink-lpp CACHE STRING "Default sub project is periodic-uplink-lpp")
 set_property(CACHE SUB_PROJECT PROPERTY STRINGS ${SUB_PROJECT_LIST})
 
 # Allow LORAWAN_DEFAULT_CLASS overriding for periodic-uplink-lpp project
-if(SUB_PROJECT STREQUAL periodic-uplink-lpp)
+if(SUB_PROJECT STREQUAL periodic-uplink-lpp OR SUB_PROJECT STREQUAL touch-sensing)
     set(LORAWAN_DEFAULT_CLASS_LIST CLASS_A CLASS_B CLASS_C)
     set(LORAWAN_DEFAULT_CLASS CLASS_A CACHE STRING "Default LoRaWAN class is ClassA")
     set_property(CACHE LORAWAN_DEFAULT_CLASS PROPERTY STRINGS ${LORAWAN_DEFAULT_CLASS_LIST})
@@ -39,11 +39,11 @@ set(ACTIVE_REGION_LIST   LORAMAC_REGION_EU868 LORAMAC_REGION_US915 LORAMAC_REGIO
     LORAMAC_REGION_EU433 LORAMAC_REGION_AU915 LORAMAC_REGION_AS923 LORAMAC_REGION_CN470
     LORAMAC_REGION_KR920 LORAMAC_REGION_IN865 LORAMAC_REGION_RU864
 )
-set(ACTIVE_REGION LORAMAC_REGION_EU868 CACHE STRING "Default active region is EU868")
+set(ACTIVE_REGION LORAMAC_REGION_AS923 CACHE STRING "Default active region is AS923")
 set_property(CACHE ACTIVE_REGION PROPERTY STRINGS ${ACTIVE_REGION_LIST})
 
-if((SUB_PROJECT STREQUAL periodic-uplink-lpp OR SUB_PROJECT STREQUAL fuota-test-01) AND NOT CLASSB_ENABLED )
-    message(FATAL_ERROR "Please turn on Class B support of LoRaMac ( CLASSB_ENABLED=ON ) to use periodic-uplink-lpp, fuota-test-01 sub projects")
+if((SUB_PROJECT STREQUAL periodic-uplink-lpp OR SUB_PROJECT STREQUAL fuota-test-01 OR SUB_PROJECT STREQUAL touch-sensing) AND NOT CLASSB_ENABLED )
+    message(FATAL_ERROR "Please turn on Class B support of LoRaMac ( CLASSB_ENABLED=ON ) to use periodic-uplink-lpp, fuota-test-01, touch-sensing sub projects")
 endif()
 
 # Allow selection of secure-element provisioning method
@@ -78,7 +78,35 @@ if(SUB_PROJECT STREQUAL periodic-uplink-lpp)
         "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/packages/LmhpFragmentation.c"
         "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/packages/LmhpRemoteMcastSetup.c"
     )
+elseif( SUB_PROJECT STREQUAL touch-sensing)
 
+    #---------------------------------------------------------------------------------------
+    # Application common features handling
+    #---------------------------------------------------------------------------------------
+    list(APPEND ${PROJECT_NAME}_COMMON
+        "${CMAKE_CURRENT_LIST_DIR}/common/CayenneLpp.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/cli.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandlerMsgDisplay.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/NvmDataMgmt.c"
+    )
+
+    #---------------------------------------------------------------------------------------
+    # Application LoRaMac handler
+    #---------------------------------------------------------------------------------------
+    list(APPEND ${PROJECT_NAME}_LMH
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/LmHandler.c"
+    )
+
+    #---------------------------------------------------------------------------------------
+    # LoRaMac handler applicative packages
+    #---------------------------------------------------------------------------------------
+    list(APPEND ${PROJECT_NAME}_LMHP
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/packages/FragDecoder.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/packages/LmhpClockSync.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/packages/LmhpCompliance.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/packages/LmhpFragmentation.c"
+        "${CMAKE_CURRENT_LIST_DIR}/common/LmHandler/packages/LmhpRemoteMcastSetup.c"
+    )
 elseif(SUB_PROJECT STREQUAL fuota-test-01)
 
     #---------------------------------------------------------------------------------------
@@ -134,6 +162,9 @@ target_compile_definitions(${PROJECT_NAME}-${SUB_PROJECT} PRIVATE ACTIVE_REGION=
 if(SUB_PROJECT STREQUAL periodic-uplink-lpp)
     target_compile_definitions(${PROJECT_NAME}-${SUB_PROJECT} PRIVATE LORAWAN_DEFAULT_CLASS=${LORAWAN_DEFAULT_CLASS})
 endif()
+if( SUB_PROJECT STREQUAL touch-sensing)
+    target_compile_definitions(${PROJECT_NAME}-${SUB_PROJECT} PRIVATE -DSTM32L151xBA -DTSLPRM_STM32L1XX_SW_ACQ)
+endif()
 if(${SECURE_ELEMENT_PRE_PROVISIONED} MATCHES ON)
     target_compile_definitions(${PROJECT_NAME}-${SUB_PROJECT} PRIVATE -DSECURE_ELEMENT_PRE_PROVISIONED)
 endif()
@@ -145,6 +176,7 @@ target_compile_definitions(${PROJECT_NAME}-${SUB_PROJECT}  PUBLIC
 )
 
 target_include_directories(${PROJECT_NAME}-${SUB_PROJECT} PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/${SUB_PROJECT}/App
     ${CMAKE_CURRENT_SOURCE_DIR}/common
     ${CMAKE_CURRENT_SOURCE_DIR}/common/LmHandler
     ${CMAKE_CURRENT_SOURCE_DIR}/common/LmHandler/packages
