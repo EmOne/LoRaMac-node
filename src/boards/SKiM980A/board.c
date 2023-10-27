@@ -345,6 +345,30 @@ uint8_t BoardGetPotiLevel( void )
  */
 #ifdef STM32L151xBA
 #define VREFINT_CAL                                 ( *( uint16_t* )0x1FF80078)
+/* Internal temperature sensor: constants data used for indicative values in  */
+/* this example. Refer to device datasheet for min/typ/max values.            */
+
+/* Internal temperature sensor, parameter TS_CAL1: TS ADC raw data acquired at
+ *a temperature of 110 DegC (+-5 DegC), VDDA = 3.3 V (+-10 mV). */
+#define TEMP30_CAL_ADDR   ((uint16_t*) ((uint32_t) 0x1FF8007A))
+
+/* Internal temperature sensor, parameter TS_CAL2: TS ADC raw data acquired at
+ *a temperature of  30 DegC (+-5 DegC), VDDA = 3.3 V (+-10 mV). */
+#define TEMP110_CAL_ADDR  ((uint16_t*) ((uint32_t) 0x1FF8007E))
+/* Vdda value with which temperature sensor has been calibrated in production
+   (+-10 mV). */
+#define VDDA_TEMP_CAL                  ((uint32_t) 3000)
+#define VDDA_VREFINT_CAL               ((uint32_t) 3000)
+
+#define COMPUTE_TEMPERATURE(TS_ADC_DATA, VDDA_APPLI)                           \
+  ((((( ((int32_t)((TS_ADC_DATA * VDDA_APPLI) / VDDA_TEMP_CAL)                  \
+         - (int32_t) *TEMP30_CAL_ADDR)                                          \
+      ) * (int32_t)(110 - 30)                                                   \
+     )<<8) / (int32_t)(*TEMP110_CAL_ADDR - *TEMP30_CAL_ADDR)                        \
+   ) + (30<<8)                                                                      \
+  )
+
+
 #else
 #define VREFINT_CAL                                 ( *( uint16_t* )0x1FF800F8U )
 #endif
@@ -373,7 +397,7 @@ uint16_t BoardBatteryMeasureVoltage( void )
     uint32_t batteryVoltage = 0;
 
     // Read the current Voltage
-    vref = AdcReadChannel( &Adc , ADC_CHANNEL_17 );
+    vref = AdcReadChannel( &Adc , ADC_CHANNEL_VREFINT );
 
     // We don't use the VREF from calibValues here.
     // calculate the Voltage in millivolt
@@ -381,6 +405,32 @@ uint16_t BoardBatteryMeasureVoltage( void )
     batteryVoltage = batteryVoltage / ( uint32_t )vref;
 
     return batteryVoltage;
+}
+
+int16_t BoardGetTemperatureLevel(void)
+{
+  /* USER CODE BEGIN SYS_GetTemperatureLevel_1 */
+
+  /* USER CODE END SYS_GetTemperatureLevel_1 */
+  int16_t temperatureDegreeC = 0;
+  uint32_t measuredLevel = 0;
+  uint16_t batteryLevelmV = BoardBatteryMeasureVoltage();
+
+  measuredLevel = AdcReadChannel( &Adc, ADC_CHANNEL_TEMPSENSOR);
+
+  temperatureDegreeC = COMPUTE_TEMPERATURE(measuredLevel, batteryLevelmV);
+
+//   APP_LOG(TS_ON, VLEVEL_L, "temp= %d\n\r", temperatureDegreeC >> 8);
+
+  return (int16_t) temperatureDegreeC;
+  /* USER CODE BEGIN SYS_GetTemperatureLevel_2 */
+
+  /* USER CODE END SYS_GetTemperatureLevel_2 */
+}
+
+float BoardGetTemperature( void )
+{
+    return BoardGetTemperatureLevel();
 }
 
 uint32_t BoardGetBatteryVoltage( void )

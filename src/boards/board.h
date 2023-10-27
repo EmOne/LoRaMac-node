@@ -90,7 +90,7 @@ uint8_t BoardGetBatteryLevel( void );
  *
  * \retval temperature * 256
  */
-int16_t BoardGetTemperature( void );
+float BoardGetTemperature( void );
 
 /*!
  * Returns a pseudo random seed generated using the MCU Unique ID

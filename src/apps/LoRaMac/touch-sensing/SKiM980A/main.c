@@ -57,7 +57,7 @@
 /*!
  * Defines the application data transmission duty cycle. 5s, value in [ms].
  */
-#define APP_TX_DUTYCYCLE                            5000
+#define APP_TX_DUTYCYCLE                            60000
 
 /*!
  * Defines a random delay for application data transmission duty cycle. 1s,
@@ -77,7 +77,7 @@
  *
  * \remark Please note that LORAWAN_DEFAULT_DATARATE is used only when ADR is disabled 
  */
-#define LORAWAN_DEFAULT_DATARATE                    DR_3
+#define LORAWAN_DEFAULT_DATARATE                    DR_2
 
 /*!
  * LoRaWAN confirmed messages
@@ -197,7 +197,7 @@ static void OnLedBeaconTimerEvent( void* context );
 static LmHandlerCallbacks_t LmHandlerCallbacks =
 {
     .GetBatteryLevel = BoardGetBatteryLevel,
-    .GetTemperature = NULL,
+    .GetTemperature = BoardGetTemperature,
     .GetRandomSeed = BoardGetRandomSeed,
     .OnMacProcess = OnMacProcessNotify,
     .OnNvmDataChange = OnNvmDataChange,
@@ -477,6 +477,7 @@ static void PrepareTxFrame( void )
     // CayenneLppAddAnalogInput( channel++, BoardGetBatteryLevel( ) * 100 / 254 );
     CayenneLppAddDigitalInput( channel++, potiPercentage );
     CayenneLppAddAnalogInput( channel++, vdd );
+    CayenneLppAddTemperature( channel++, BoardGetTemperature());
 
     CayenneLppCopy( AppData.Buffer );
     AppData.BufferSize = CayenneLppGetSize( );
