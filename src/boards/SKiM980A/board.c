@@ -152,6 +152,8 @@ void BoardInitMcu( void )
     }
 #ifndef USE_TS
     AdcInit( &Adc, POTI );
+    #else
+    AdcInit( &Adc, NC );
 #endif
     SpiInit( &SX1272.Spi, SPI_1, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, NC );
     SX1272IoInit( );
@@ -327,6 +329,7 @@ uint8_t BoardGetPotiLevel( void )
             // potiLevel = 0xff;
 			break;
 		}
+        ProcessSensors();
 #endif
 
     return potiLevel;
@@ -340,8 +343,11 @@ uint8_t BoardGetPotiLevel( void )
 /*!
  * VREF calibration value
  */
+#ifdef STM32L151xBA
+#define VREFINT_CAL                                 ( *( uint16_t* )0x1FF80078)
+#else
 #define VREFINT_CAL                                 ( *( uint16_t* )0x1FF800F8U )
-
+#endif
 /*!
  * ADC maximum value
  */

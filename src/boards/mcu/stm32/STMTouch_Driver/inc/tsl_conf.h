@@ -381,7 +381,7 @@
 /** Environment Change System delay in msec (range=0..5000)
   - The ECS will be started after this delay and when all sensors are in Release state.
 */
-#define TSLPRM_ECS_DELAY (100)
+#define TSLPRM_ECS_DELAY (250)
 
 /** @} Common_Parameters_ECS */
 
