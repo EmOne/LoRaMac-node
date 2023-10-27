@@ -48,3 +48,10 @@ endfunction()
 function(create_bin_output TARGET)
     add_custom_target(${TARGET}.bin ALL DEPENDS ${TARGET} COMMAND ${CMAKE_OBJCOPY} -Obinary ${TARGET} ${TARGET}.bin)
 endfunction()
+
+#---------------------------------------------------------------------------------------
+# Creates output in elf32 
+#---------------------------------------------------------------------------------------
+function(create_elf_output TARGET)
+    add_custom_target(${TARGET}.elf ALL DEPENDS ${TARGET} COMMAND ${CMAKE_OBJCOPY} -Oelf32-littlearm ${TARGET} ${TARGET}.elf)
+endfunction()

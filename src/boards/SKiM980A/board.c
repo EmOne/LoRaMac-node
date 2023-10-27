@@ -211,6 +211,70 @@ void BoardGetUniqueId( uint8_t *id )
 #define POTI_MAX_LEVEL 900
 #define POTI_MIN_LEVEL 10
 
+// For debug purpose with STMStudio
+TSL_StateId_enum_T DS[TSLPRM_TOTAL_TKEYS]; // To store the States (one per object)
+TSL_tDelta_T DD[TSLPRM_TOTAL_TKEYS]; // To store the Deltas (one per channel)
+TSL_tMeas_T DM[TSLPRM_TOTAL_TKEYS];// To store the Measures (one per object)
+TSL_tMeas_T DR[TSLPRM_TOTAL_TKEYS];// To store the references (one per object)
+
+tsl_user_status_t status;
+
+void ProcessSensors(void)
+{
+	uint32_t idx = 0;
+	uint32_t idx_ds = 0;
+   uint32_t idx_dd = 0;
+   uint32_t idx_dm = 0;
+   uint32_t idx_dr = 0;
+
+   // STMStudio debug
+   for (idx = 0; idx < TSLPRM_TOTAL_TKEYS; idx++)
+   {
+     DS[idx_ds++] = MyTKeys[idx].p_Data->StateId;
+     DD[idx_dd++] = MyTKeys[idx].p_ChD->Delta;
+     DM[idx_dm++] = MyTKeys[idx].p_ChD->Meas;
+     DR[idx_dr++] = MyTKeys[idx].p_ChD->Ref;
+   }
+
+	// // TKEY 0
+	// if (TEST_TKEY(0)) {
+	// 	LED_BLINK(GREEN, 4);
+	// } else {
+	// 	LED_GREEN_OFF
+	// 	;
+	// }
+
+	// // TKEY 1
+	// if (TEST_TKEY(1)) {
+	// 	LED_BLINK(GREEN, 4);
+	// } else {
+	// 	LED_GREEN_OFF
+	// 	;
+	// }
+
+	// if (TEST_TKEY(2)) {
+	// 	LED_BLINK(GREEN, 4);
+	// } else {
+	// 	LED_GREEN_OFF
+	// 	;
+	// }
+
+	// if (TEST_TKEY(3)) {
+	// 	LED_BLINK(GREEN, 4);
+	// } else {
+	// 	LED_GREEN_OFF
+	// 	;
+	// }
+
+	// if (TEST_TKEY(4)) {
+	// 	LED_BLINK(GREEN, 4);
+	// } else {
+	// 	LED_GREEN_OFF
+	// 	;
+	// }
+}
+
+
 uint8_t BoardGetPotiLevel( void )
 {
     uint8_t potiLevel = 0;
@@ -234,8 +298,8 @@ uint8_t BoardGetPotiLevel( void )
         potiLevel = ( ( vpoti - POTI_MIN_LEVEL ) * 100 ) / POTI_MAX_LEVEL;
     }
 #endif
-    
-    tsl_user_status_t status =  tsl_user_Exec();
+     
+     status =  tsl_user_Exec();
 	 switch (status) {
 		case TSL_USER_STATUS_OK_ECS_ON:
 			GpioToggle(&Led2);
@@ -441,6 +505,7 @@ void SysTick_Handler( void )
 {
     HAL_IncTick( );
     HAL_SYSTICK_IRQHandler( );
+    TSL_tim_ProcessIT();
 }
 
 uint8_t GetBoardPowerSource( void )

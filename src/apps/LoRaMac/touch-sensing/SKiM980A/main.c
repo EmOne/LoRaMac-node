@@ -37,6 +37,8 @@
 #include "CayenneLpp.h"
 #include "LmHandlerMsgDisplay.h"
 
+#include "tsl.h"
+
 #ifndef ACTIVE_REGION
 
 #warning "No active region defined, LORAMAC_REGION_EU868 will be used as default."
@@ -263,7 +265,8 @@ int main( void )
     BoardInitPeriph( );
 
     TimerInit( &Led4Timer, OnLed4TimerEvent );
-    TimerSetValue( &Led4Timer, 25 );
+    TimerSetValue( &Led4Timer, 250 );
+    TimerStart( &Led4Timer );
 
     TimerInit( &Led2Timer, OnLed2TimerEvent );
     TimerSetValue( &Led2Timer, 25 );
@@ -381,6 +384,9 @@ static void OnRxData( LmHandlerAppData_t* appData, LmHandlerRxParams_t* params )
             AppLedStateOn = appData->Buffer[0] & 0x01;
             GpioWrite( &Led3, ( ( AppLedStateOn & 0x01 ) != 0 ) ? 1 : 0 );
         }
+        break;
+    case 99:
+        BoardResetMcu();
         break;
     default:
         break;
@@ -564,6 +570,9 @@ static void OnLed4TimerEvent( void* context )
     TimerStop( &Led4Timer );
     // Switch LED 4 OFF
     GpioWrite( &Led4, 0 );
+    // TSL_tim_ProcessIT();
+    BoardGetPotiLevel();
+    TimerStart( &Led4Timer );
 }
 
 /*!

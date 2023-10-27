@@ -210,3 +210,4 @@ print_section_sizes(${PROJECT_NAME}-${SUB_PROJECT})
 # Create output in hex and binary format
 create_bin_output(${PROJECT_NAME}-${SUB_PROJECT})
 create_hex_output(${PROJECT_NAME}-${SUB_PROJECT})
+create_elf_output(${PROJECT_NAME}-${SUB_PROJECT})

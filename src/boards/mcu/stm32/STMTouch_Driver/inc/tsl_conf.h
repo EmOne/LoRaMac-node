@@ -98,7 +98,7 @@
   - When equal to 1, the function TSL_CallBack_TimerTick must be defined in
     the application code. It is called for each timer interruption.
 */
-#define TSLPRM_USE_TIMER_CALLBACK (1)
+#define TSLPRM_USE_TIMER_CALLBACK (0)
 
 /** Acquisition interrupt mode (0=No, 1=Yes)
   - If No the TS interrupt is not used.
