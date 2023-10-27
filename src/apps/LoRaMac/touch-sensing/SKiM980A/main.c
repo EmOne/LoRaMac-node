@@ -475,7 +475,7 @@ static void PrepareTxFrame( void )
 
     // CayenneLppAddDigitalInput( channel++, AppLedStateOn );
     // CayenneLppAddAnalogInput( channel++, BoardGetBatteryLevel( ) * 100 / 254 );
-    CayenneLppAddAnalogInput( channel++, potiPercentage );
+    CayenneLppAddDigitalInput( channel++, potiPercentage );
     CayenneLppAddAnalogInput( channel++, vdd );
 
     CayenneLppCopy( AppData.Buffer );

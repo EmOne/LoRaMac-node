@@ -274,10 +274,11 @@ void ProcessSensors(void)
 	// }
 }
 
+uint8_t potiLevel = 0;
 
 uint8_t BoardGetPotiLevel( void )
 {
-    uint8_t potiLevel = 0;
+    
 #ifndef USE_TS
     uint16_t vpoti = 0;
     // Read the current potentiometer setting
@@ -297,20 +298,37 @@ uint8_t BoardGetPotiLevel( void )
         // if the value is in the area, calculate the percentage value
         potiLevel = ( ( vpoti - POTI_MIN_LEVEL ) * 100 ) / POTI_MAX_LEVEL;
     }
-#endif
-     
+#else
+     int ch_idx = 0, delta[TSLPRM_TOTAL_TOUCHKEYS];
+     int gain = 2;
      status =  tsl_user_Exec();
 	 switch (status) {
 		case TSL_USER_STATUS_OK_ECS_ON:
+        {
 			GpioToggle(&Led2);
+            for (size_t i = 0; i < TSLPRM_TOTAL_TOUCHKEYS; i++)
+            {
+                delta[i] = MyTKeys[i].p_ChD->Delta;
+                if (delta[i] < 0) delta[i] = 0;                
+            }
+            for (size_t idx = 1; idx < TSLPRM_TOTAL_TOUCHKEYS-1; idx++)
+            {
+                if ((delta[ch_idx] * gain) < (delta[idx] * gain))
+                    ch_idx = idx;
+            }
+            potiLevel = ch_idx + 1;
+        }
 			break;
 		case TSL_USER_STATUS_OK_ECS_OFF:
 		case TSL_USER_STATUS_OK_NO_ECS:
 		case TSL_USER_STATUS_BUSY:
 		default:
 			GpioWrite(&Led2, 0);
+            // potiLevel = 0xff;
 			break;
 		}
+#endif
+
     return potiLevel;
 }
 
