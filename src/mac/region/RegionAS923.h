@@ -264,9 +264,46 @@ extern "C"
 #define AS923_LC2                                   { 923400000, 0, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
 
 /*!
+ * LoRaMac default channel 3
+ * Channel = { Frequency [Hz], RX1 Frequency [Hz], { ( ( DrMax << 4 ) | DrMin ) }, Band }
+ */
+#define AS923_LC3                                   { 922000000, 0, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
+
+/*!
+ * LoRaMac default channel 4
+ * Channel = { Frequency [Hz], RX1 Frequency [Hz], { ( ( DrMax << 4 ) | DrMin ) }, Band }
+ */
+#define AS923_LC4                                   { 922200000, 0, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
+
+/*!
+ * LoRaMac default channel 5
+ * Channel = { Frequency [Hz], RX1 Frequency [Hz], { ( ( DrMax << 4 ) | DrMin ) }, Band }
+ */
+#define AS923_LC5                                   { 922400000, 0, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
+
+/*!
+ * LoRaMac default channel 6
+ * Channel = { Frequency [Hz], RX1 Frequency [Hz], { ( ( DrMax << 4 ) | DrMin ) }, Band }
+ */
+#define AS923_LC6                                   { 922600000, 0, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
+
+/*!
+ * LoRaMac default channel 7
+ * Channel = { Frequency [Hz], RX1 Frequency [Hz], { ( ( DrMax << 4 ) | DrMin ) }, Band }
+ */
+#define AS923_LC7                                   { 922800000, 0, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
+
+
+/*!
+ * LoRaMac default channel 8
+ * Channel = { Frequency [Hz], RX1 Frequency [Hz], { ( ( DrMax << 4 ) | DrMin ) }, Band }
+ */
+#define AS923_LC8                                   { 923000000, 0, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
+
+/*!
  * LoRaMac channels which are allowed for the join procedure
  */
-#define AS923_JOIN_CHANNELS                         ( uint16_t )( LC( 1 ) | LC( 2 ) )
+#define AS923_JOIN_CHANNELS (uint16_t)(LC(1) | LC(2) | LC(3) | LC(4) | LC(5) | LC(6) | LC(7) | LC(8))
 
 /*!
  * RSSI threshold for a free channel [dBm]

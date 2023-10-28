@@ -175,7 +175,8 @@ elseif(BOARD STREQUAL SKiM881AXL)
 
 elseif(BOARD STREQUAL eMOD-iMS62F)
     # Configure toolchain for eMOD-iMS62F
-    set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/boards/eMOD-iMS62F/cmsis/arm-gcc/STM32L151UCYX_FLASH.ld)
+    # set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/boards/eMOD-iMS62F/cmsis/arm-gcc/STM32L151UCYX_FLASH.ld)
+    set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/boards/eMOD-iMS62F/cmsis/arm-gcc/STM32L151RDYX_FLASH.ld)
     include(stm32l1)
 
     # Build platform specific board implementation
