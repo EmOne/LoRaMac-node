@@ -57,7 +57,7 @@
 /*!
  * Defines the application data transmission duty cycle. 5s, value in [ms].
  */
-#define APP_TX_DUTYCYCLE                            60000
+#define APP_TX_DUTYCYCLE                            5000
 
 /*!
  * Defines a random delay for application data transmission duty cycle. 1s,
@@ -265,7 +265,7 @@ int main( void )
     BoardInitPeriph( );
 
     TimerInit( &Led4Timer, OnLed4TimerEvent );
-    TimerSetValue( &Led4Timer, 250 );
+    TimerSetValue( &Led4Timer, 150 );
     TimerStart( &Led4Timer );
 
     TimerInit( &Led2Timer, OnLed2TimerEvent );
@@ -461,26 +461,44 @@ static void PrepareTxFrame( void )
 
     AppData.Port = LORAWAN_APP_PORT;
 
-    CayenneLppReset( );
+    // CayenneLppReset( );
 
     uint8_t potiPercentage = 0;
+    uint8_t cap_ch[5] = { 0 };
     uint16_t vdd = 0;
+    int16_t celsius;
 
     // Read the current potentiometer setting in percent
     potiPercentage = BoardGetPotiLevel( );
+    BoardGetCapSenseStatus(cap_ch);
+    for (channel = 0; channel < TSLPRM_TOTAL_TKEYS; channel++)
+    {
+        AppData.Buffer[channel] = cap_ch[channel];
+    }
+    
+    AppData.Buffer[channel++] = potiPercentage;
 
     // Read the current voltage level
     BoardGetBatteryLevel( ); // Updates the value returned by BoardGetBatteryVoltage( ) function.
     vdd = BoardGetBatteryVoltage( );
 
+    AppData.Buffer[channel++] = vdd >> 8;
+    AppData.Buffer[channel++] = vdd;
+
+    celsius = (int16_t) (BoardGetTemperature() * 10);
+
+    AppData.Buffer[channel++] = celsius >> 8;
+    AppData.Buffer[channel++] = celsius;
+
+    AppData.BufferSize = channel;
     // CayenneLppAddDigitalInput( channel++, AppLedStateOn );
     // CayenneLppAddAnalogInput( channel++, BoardGetBatteryLevel( ) * 100 / 254 );
-    CayenneLppAddDigitalInput( channel++, potiPercentage );
-    CayenneLppAddAnalogInput( channel++, vdd );
-    CayenneLppAddTemperature( channel++, BoardGetTemperature());
+    // CayenneLppAddDigitalInput( channel++, potiPercentage );
+    // CayenneLppAddAnalogInput( channel++, vdd );
+    // CayenneLppAddTemperature( channel++, BoardGetTemperature());
 
-    CayenneLppCopy( AppData.Buffer );
-    AppData.BufferSize = CayenneLppGetSize( );
+    // CayenneLppCopy( AppData.Buffer );
+    // AppData.BufferSize = CayenneLppGetSize( );
 
     if( LmHandlerSend( &AppData, LmHandlerParams.IsTxConfirmed ) == LORAMAC_HANDLER_SUCCESS )
     {

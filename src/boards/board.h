@@ -93,6 +93,13 @@ uint8_t BoardGetBatteryLevel( void );
 float BoardGetTemperature( void );
 
 /*!
+ * \brief Get the cap sense status
+ *
+ * \retval a number of channels
+ */
+int BoardGetCapSenseStatus( uint8_t* cap );
+
+/*!
  * Returns a pseudo random seed generated using the MCU Unique ID
  *
  * \retval seed Generated pseudo random seed

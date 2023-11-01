@@ -311,7 +311,7 @@ uint8_t BoardGetPotiLevel( void )
             for (size_t i = 0; i < TSLPRM_TOTAL_TOUCHKEYS; i++)
             {
                 delta[i] = MyTKeys[i].p_ChD->Delta;
-                if (delta[i] < 0) delta[i] = 0;                
+                if (delta[i] < 0) DD[i] = delta[i] = 0;                
             }
             for (size_t idx = 1; idx < TSLPRM_TOTAL_TOUCHKEYS-1; idx++)
             {
@@ -426,6 +426,17 @@ int16_t BoardGetTemperatureLevel(void)
   /* USER CODE BEGIN SYS_GetTemperatureLevel_2 */
 
   /* USER CODE END SYS_GetTemperatureLevel_2 */
+}
+
+int BoardGetCapSenseStatus( uint8_t* cap )
+{
+    
+   for (size_t i = 0; i < TSLPRM_TOTAL_TKEYS; i++)
+   {
+        *cap = (uint8_t) DD[i];
+        cap++;
+   }
+   return TSLPRM_TOTAL_TKEYS;
 }
 
 float BoardGetTemperature( void )
