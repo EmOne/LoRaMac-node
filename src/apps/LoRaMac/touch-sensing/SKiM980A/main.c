@@ -57,7 +57,7 @@
 /*!
  * Defines the application data transmission duty cycle. 5s, value in [ms].
  */
-#define APP_TX_DUTYCYCLE                            5000
+#define APP_TX_DUTYCYCLE                            60000
 
 /*!
  * Defines a random delay for application data transmission duty cycle. 1s,
@@ -265,7 +265,7 @@ int main( void )
     BoardInitPeriph( );
 
     TimerInit( &Led4Timer, OnLed4TimerEvent );
-    TimerSetValue( &Led4Timer, 150 );
+    TimerSetValue( &Led4Timer, 100 );
     TimerStart( &Led4Timer );
 
     TimerInit( &Led2Timer, OnLed2TimerEvent );
