@@ -36,7 +36,28 @@
 #include "rtc-board.h"
 #include "sx1272-board.h"
 #include "board.h"
+
+#if ( USE_TS == 1 )
 #include "touchsensing.h"
+#endif /* SENSOR */
+
+#if ( USE_IMU == 1 )
+// #if defined ( USE_C6DOFIMU9 )
+#include "c6dofimu9.h"
+// #elif defined ( USE_C6DOFIMU17 )
+// #include "c6dofimu9.h"
+// #elif defined ( USE_INCLINOMETER )
+// #include "inclinometer.h"
+// #else
+
+// #endif /* */
+
+Gpio_t imu_sync;
+Gpio_t imu_interupt;
+static c6dofimu9_t c6dofimu9;
+c6dofimu9_cfg_t cfg;
+
+#endif /* IMU */
 
 /*!
  * Unique Devices IDs register set ( STM32L1xxx )
@@ -104,7 +125,29 @@ void BoardCriticalSectionEnd( uint32_t *mask )
 
 void BoardInitPeriph( void )
 {
+#if (USE_TS == 1)
     MX_TOUCHSENSING_Init();
+#elif (USE_IMU == 1)
+
+    c6dofimu9_cfg_setup( &cfg );
+//    C6DOFIMU9_MAP_MIKROBUS( cfg, MIKROBUS_1 );
+    c6dofimu9_init(&c6dofimu9, &cfg);
+
+    if( c6dofimu9_get_device_id(&c6dofimu9) != C6DOFIMU9_DEVICE_ID)
+    {
+    	// Error_Handler();
+    }
+
+    c6dofimu9_set_gyro_config_lp_mode(&c6dofimu9, C6DOFIMU9_GYRO_AVERAGE_1x);
+	c6dofimu9_set_gyro_measurement_range(&c6dofimu9,
+			C6DOFIMU9_GYRO_FULL_SCALE_250dps);
+	c6dofimu9_set_accel_measurement_range(&c6dofimu9,
+			C6DOFIMU9_ACCEL_FULL_SCALE_2g);
+	c6dofimu9_set_accel_avg_filter_mode(&c6dofimu9,
+			C6DOFIMU9_ACCEL_AVERAGE_4_SAMPLES);
+    // GpioInit( &imu_sync, IMU_SYNC, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+    // GpioInit( &imu_interupt, IMU_INT, PIN_INPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
+#endif
 }
 
 void BoardInitMcu( void )
@@ -114,12 +157,15 @@ void BoardInitMcu( void )
         HAL_Init( );
 
         // LEDs
-#if ( USE_POTENTIOMETER == 0 )
+#if ( USE_TS == 1)
         GpioInit( &Led1, LED_1, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );     
-#endif
+#elif (USE_POTENTIOMETER == 1)
         GpioInit( &Led2, LED_2, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
         GpioInit( &Led3, LED_3, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
         GpioInit( &Led4, LED_4, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+#elif ( USE_IMU == 1 )
+        GpioInit( &Led2, LED_2, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+#endif
 
         SystemClockConfig( );
 
@@ -132,12 +178,15 @@ void BoardInitMcu( void )
         RtcInit( );
 
         // Switch LED 1, 2, 3, 4 OFF
-#if ( USE_POTENTIOMETER == 0 )
+#if ( USE_TS == 1 )
         GpioWrite( &Led1, 0 );
-#endif
+#elif (USE_POTENTIOMETER == 1)
         GpioWrite( &Led2, 0 );
         GpioWrite( &Led3, 0 );
         GpioWrite( &Led4, 0 );
+#elif ( USE_IMU == 1 )
+        GpioWrite( &Led2, 0 );
+#endif
 
         BoardUnusedIoInit( );
         if( GetBoardPowerSource( ) == BATTERY_POWER )
@@ -150,11 +199,13 @@ void BoardInitMcu( void )
     {
         SystemClockReConfig( );
     }
+
 #ifndef USE_TS
     AdcInit( &Adc, POTI );
-    #else
+#else
     AdcInit( &Adc, NC );
 #endif
+
     SpiInit( &SX1272.Spi, SPI_1, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, NC );
     SX1272IoInit( );
 
@@ -213,6 +264,7 @@ void BoardGetUniqueId( uint8_t *id )
 #define POTI_MAX_LEVEL 900
 #define POTI_MIN_LEVEL 10
 
+#if ( USE_TS == 1)
 // For debug purpose with STMStudio
 TSL_StateId_enum_T DS[TSLPRM_TOTAL_TKEYS]; // To store the States (one per object)
 TSL_tDelta_T DD[TSLPRM_TOTAL_TKEYS]; // To store the Deltas (one per channel)
@@ -275,6 +327,7 @@ void ProcessSensors(void)
 	// 	;
 	// }
 }
+#endif
 
 uint8_t potiLevel = 0;
 
@@ -300,7 +353,7 @@ uint8_t BoardGetPotiLevel( void )
         // if the value is in the area, calculate the percentage value
         potiLevel = ( ( vpoti - POTI_MIN_LEVEL ) * 100 ) / POTI_MAX_LEVEL;
     }
-#else
+#elif (USE_TS == 1)
      int ch_idx = 0, delta[TSLPRM_TOTAL_TOUCHKEYS];
      int gain = 2;
      status =  tsl_user_Exec();
@@ -330,6 +383,8 @@ uint8_t BoardGetPotiLevel( void )
 			break;
 		}
         ProcessSensors();
+#elif (USE_IMU == 1)
+
 #endif
 
     return potiLevel;
@@ -428,6 +483,7 @@ int16_t BoardGetTemperatureLevel(void)
   /* USER CODE END SYS_GetTemperatureLevel_2 */
 }
 
+#if (Use_ts == 1)
 int BoardGetCapSenseStatus( uint8_t* cap )
 {
     
@@ -438,6 +494,20 @@ int BoardGetCapSenseStatus( uint8_t* cap )
    }
    return TSLPRM_TOTAL_TKEYS;
 }
+#endif
+
+#if (USE_IMU == 1)
+void BoardGetIMU( int16_t* gyro_x ,int16_t* gyro_y, int16_t* gyro_z, int16_t* accel_x ,int16_t* accel_y, int16_t* accel_z)
+{
+    c6dofimu9_get_accel_data(&c6dofimu9, accel_x, accel_y,
+                  accel_z);
+    HAL_Delay(10);
+    c6dofimu9_get_gyro_data(&c6dofimu9, gyro_x, gyro_y,
+                  gyro_z);
+    HAL_Delay(10);
+}
+#endif
+
 
 float BoardGetTemperature( void )
 {
@@ -590,7 +660,9 @@ void SysTick_Handler( void )
 {
     HAL_IncTick( );
     HAL_SYSTICK_IRQHandler( );
+#if (USE_TS == 1)
     TSL_tim_ProcessIT();
+#endif
 }
 
 uint8_t GetBoardPowerSource( void )

@@ -73,6 +73,20 @@ else()
     endif()
 endif()
 
+if(${SENSOR_ELEMENT} MATCHES C6DOFIMU9)
+    file(GLOB ${PROJECT_NAME}_SOURCES "*.c" "c6dofimu9/*.c")
+    target_include_directories( ${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/c6dofimu9)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE -DUSE_C6DOFIMU9)
+elseif(${SENSOR_ELEMENT} MATCHES C6DOFIMU17)
+    file(GLOB ${PROJECT_NAME}_SOURCES "*.c" "c6dofimu17/*.c")
+    target_include_directories( ${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/c6dofimu17)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE -DUSE_C6DOFIMU17)
+elseif(${SENSOR_ELEMENT} MATCHES INCLINOMETER)
+    file(GLOB ${PROJECT_NAME}_SOURCES "*.c" "inclinometer/*.c")
+    target_include_directories( ${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inclinometer)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE -DUSE_INCLINOMETER)
+endif()
+
 target_include_directories( ${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     $<TARGET_PROPERTY:board,INTERFACE_INCLUDE_DIRECTORIES>

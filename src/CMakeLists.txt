@@ -33,8 +33,13 @@ set(MBED_RADIO_SHIELD SX1261MBXBAS CACHE STRING "Default MBED radio shield is SX
 set_property(CACHE MBED_RADIO_SHIELD PROPERTY STRINGS ${MBED_RADIO_SHIELD_LIST})
 
 # Allow switching of secure-elements
+set(SENSOR_ELEMENT_LIST C6DOFIMU9 C6DOFIMU17 INCLINOMETER)
+set(SENSOR_ELEMENT C6DOFIMU9 CACHE STRING "Default sensor element is C6DUFIMU9")
+set_property(CACHE SENSOR_ELEMENT PROPERTY STRINGS ${SENSOR_ELEMENT_LIST})
+
+# Allow switching of secure-elements
 set(SECURE_ELEMENT_LIST SOFT_SE LR1110_SE ATECC608A_TNGLORA_SE)
-set(SECURE_ELEMENT SOFT_SE CACHE STRING "Default secure element is SOFT_SE")
+set(SECURE_ELEMENT SOFT_SE CACHE STRING "Default sensor element is SOFT_SE")
 set_property(CACHE SECURE_ELEMENT PROPERTY STRINGS ${SECURE_ELEMENT_LIST})
 
 # Allow switching of Applications
@@ -183,6 +188,7 @@ elseif(BOARD STREQUAL B-L072Z-LRWAN1)
 
     # Configure radio
     set(RADIO sx1276 CACHE INTERNAL "Radio sx1276 selected")
+    
 endif()
 
 #---------------------------------------------------------------------------------------

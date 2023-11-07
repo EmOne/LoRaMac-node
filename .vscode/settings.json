@@ -22,8 +22,8 @@
         // LoRaMac (Default), ping-pong, rx-sensi, tx-cw.
         "APPLICATION": "LoRaMac",
         // Select LoRaMac sub project. You can choose between:
-        // periodic-uplink-lpp, fuota-test-01.
-        "SUB_PROJECT": "periodic-uplink-lpp",
+        // periodic-uplink-lpp, fuota-test-01, touch-sensing, imu.
+        "SUB_PROJECT": "imu",
         // Select the default LoRaWAN class for periodic-uplink-lpp sub-project
         // In case `CLASS_B` or `CLASS_C` is selected the example will try to
         // switch to the given class as soon as possible
@@ -50,6 +50,11 @@
         "SECURE_ELEMENT": "SOFT_SE",
         // Secure element is pre-provisioned
         "SECURE_ELEMENT_PRE_PROVISIONED": "ON",
+
+        // Sensor element type selection the following are supported
+        // C6DOFIMU9(Default), C6DOFIMU17, INCLINOMETER
+        "SENSOR_ELEMENT": "C6DOFIMU9",
+        
         // Region support activation, Select the ones you want to support.
         // By default only REGION_EU868 support is enabled.
         "REGION_EU868": "OFF",

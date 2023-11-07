@@ -53,7 +53,8 @@ extern "C"
  *         On SKiM980A X5 is the 20 pin header close to the DIP SW and Buttons
  */
 #define USE_POTENTIOMETER                           0
-#define USE_TS                                      1
+#define USE_TS                                      0
+#define USE_IMU                                     1
 
 /*!
  * Board MCU pins definitions
@@ -104,6 +105,10 @@ extern "C"
 #define LED_2                                       PA_15
 #define LED_3                                       NC
 #define LED_4                                       PA_8
+#elif ( USE_IMU == 1)
+#define IMU_SYNC                                    PA_12
+#define IMU_INT                                     PA_8
+#define LED_2                                       PA_15
 #else
 #define LED_1                                       PA_3
 #define LED_2                                       PA_0
