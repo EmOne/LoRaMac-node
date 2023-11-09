@@ -29,12 +29,15 @@
 #include "utilities.h"
 #include "i2c.h"
 #include "gpio.h"
+#include "board-config.h"
 #include "c6dofimu9.h"
 
 // ------------------------------------------------------------- PRIVATE MACROS 
 extern I2c_t I2c;
 extern Gpio_t imu_sync;
 extern Gpio_t imu_interupt;
+extern c6dofimu9_t c6dofimu9;
+extern c6dofimu9_cfg_t cfg;
 
 static uint8_t I2cDeviceAddr = 0;
 static bool IMUInitialized = false;
@@ -66,13 +69,17 @@ static bool IMUInitialized = false;
 
 // ---------------------------------------------- PRIVATE FUNCTION DECLARATIONS 
 
-static void c6dofimu9_i2c_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len );
+static int c6dofimu9_i2c_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len );
 
-static void c6dofimu9_i2c_read ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len );
+static int c6dofimu9_i2c_read ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len );
 
 static void c6dofimu9_spi_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len );
 
 static void c6dofimu9_spi_read ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len );
+/*!
+ * \brief INT PIN IRQ callback
+ */
+static void c6dofimu9_irq_handler( void* context );
 
 // ------------------------------------------------ PUBLIC FUNCTION DEFINITIONS
 
@@ -259,7 +266,6 @@ C6DOFIMU9_RETVAL c6dofimu9_init ( c6dofimu9_t *ctx, c6dofimu9_cfg_t *cfg )
     }
     
     // Output pins 
-
 //    digital_out_init( &ctx->syn, cfg->syn );
     __HAL_RCC_GPIOB_CLK_ENABLE();
     ctx->syn = SYNC_PORT;
@@ -270,7 +276,7 @@ C6DOFIMU9_RETVAL c6dofimu9_init ( c6dofimu9_t *ctx, c6dofimu9_cfg_t *cfg )
 	HAL_GPIO_Init(ctx->syn, &cfg->syn);
 
     // Input pins
-
+    
 //    digital_in_init( &ctx->int_pin, cfg->int_pin );
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	ctx->int_pin = INT_PORT;
@@ -280,17 +286,23 @@ C6DOFIMU9_RETVAL c6dofimu9_init ( c6dofimu9_t *ctx, c6dofimu9_cfg_t *cfg )
 	cfg->int_pin.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 	HAL_GPIO_Init(ctx->int_pin, &cfg->int_pin);
 
+
+    GpioInit( &imu_sync, IMU_SYNC, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+    GpioInit( &imu_interupt, IMU_INT, PIN_INPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
+    GpioSetInterrupt( &imu_interupt, IRQ_RISING_EDGE, IRQ_HIGH_PRIORITY, c6dofimu9_irq_handler );
+
     return C6DOFIMU9_OK;
 }
 
-void c6dofimu9_generic_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len )
+int c6dofimu9_generic_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len )
 {
-    ctx->write_f( ctx, reg, data_buf, len ); 
+    return ctx->write_f( ctx, reg, data_buf, len ); 
+    
 }
 
-void c6dofimu9_generic_read ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len )
+int c6dofimu9_generic_read ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len )
 {
-    ctx->read_f( ctx, reg, data_buf, len );
+    return ctx->read_f( ctx, reg, data_buf, len );
 }
 
 uint8_t c6dofimu9_check_interrupt ( c6dofimu9_t *ctx )
@@ -663,9 +675,19 @@ void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, int16_t *p_gyro_x, int16_t *p_g
     *p_gyro_y = c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_YOUT_H, C6DOFIMU9_REG_GYRO_YOUT_L );
     *p_gyro_z = c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_ZOUT_H, C6DOFIMU9_REG_GYRO_ZOUT_L );
 }
+
+void c6dofimu9_get_temperature_data ( c6dofimu9_t *ctx, int32_t *temp )
+{
+    uint8_t data[2];
+    int16_t temp_out;
+    c6dofimu9_generic_read( ctx, C6DOFIMU9_REG_TEMP_OUT_H, data, 2 );
+    temp_out = (data[0] << 8 | data[1]) * 10000;
+    temp_out = (temp_out / TEMP_SENSITIVITY) + TEMP_OFFSET;
+    *temp = (int32_t) temp_out;
+}
 // ----------------------------------------------- PRIVATE FUNCTION DEFINITIONS
 
-static void c6dofimu9_i2c_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len )
+static int c6dofimu9_i2c_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len )
 {
 //    uint8_t tx_buf[ 256 ];
 //    uint8_t cnt;
@@ -679,13 +701,13 @@ static void c6dofimu9_i2c_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_b
 
 //    i2c_master_write( &ctx->i2c, tx_buf, len + 1 );
 //    HAL_I2C_Master_Transmit(&ctx->i2c, ctx->slave_address << 1, tx_buf, len+1, 1000);
-    HAL_I2C_Mem_Write(&ctx->i2c, (uint16_t) (ctx->slave_address << 1), (uint16_t) reg, I2C_MEMADD_SIZE_8BIT, data_buf, len, 1000);
+    return HAL_I2C_Mem_Write(&ctx->i2c, (uint16_t) (ctx->slave_address << 1), (uint16_t) reg, I2C_MEMADD_SIZE_8BIT, data_buf, len, 1000);
 }
 
-static void c6dofimu9_i2c_read ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len )
+static int c6dofimu9_i2c_read ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len )
 {
 //    i2c_master_write_then_read( &ctx->i2c, &reg, 1, data_buf, len );
-	HAL_I2C_Mem_Read(&ctx->i2c, (uint16_t) (ctx->slave_address << 1), (uint16_t) reg, I2C_MEMADD_SIZE_8BIT, data_buf, len, 1000);
+	return HAL_I2C_Mem_Read(&ctx->i2c, (uint16_t) (ctx->slave_address << 1), (uint16_t) reg, I2C_MEMADD_SIZE_8BIT, data_buf, len, 1000);
 }
 
 static void c6dofimu9_spi_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len )
@@ -733,6 +755,723 @@ static void c6dofimu9_spi_read ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_bu
     {
         data_buf[ cnt ] = rx_buf [ cnt + 1];
     }
+}
+
+static void c6dofimu9_irq_handler( void* context )
+{
+    uint8_t temp = c6dofimu9_get_interrupt_status ( &c6dofimu9 );
+    if (temp & (C6DOFIMU9_BIT_WOM_X_INT|C6DOFIMU9_BIT_WOM_Y_INT|C6DOFIMU9_BIT_WOM_Z_INT))
+    {
+        /* WOM */
+    }
+    if (temp & C6DOFIMU9_BIT_FIFO_OVF_INT)
+    {
+        /* FIFO OVF */
+    }
+    if (temp & C6DOFIMU9_BIT_GDRIVE_INT)
+    {
+        /* GDIVE */
+    }
+    if (temp & C6DOFIMU9_BIT_DRY_INT)
+    {
+        /* DRY */
+    }
+}
+
+static void inv_show_saved_setting(c6dofimu9_t *st)
+{
+	// pr_debug(" REG_INT_ENABLE      : 0x%02X\n", saved_regs.int_enable);
+	// pr_debug(" REG_FIFO_EN         : 0x%02X\n", saved_regs.fifo_en);
+	// pr_debug(" REG_USER_CTRL       : 0x%02X\n", saved_regs.user_ctrl);
+	// pr_debug(" REG_CONFIG          : 0x%02X\n", saved_regs.config);
+	// pr_debug(" REG_GYRO_CONFIG     : 0x%02X\n", saved_regs.gyro_config);
+	// pr_debug(" REG_ACCEL_CONFIG    : 0x%02X\n", saved_regs.accel_config);
+	// pr_debug(" REG_ACCEL_CONFIG_2  : 0x%02X\n", saved_regs.accel_config_2);
+	// pr_debug(" REG_SAMPLE_RATE_DIV : 0x%02X\n", saved_regs.smplrt_div);
+	// pr_debug(" REG_LP_MODE_CTRL    : 0x%02X\n", saved_regs.lp_mode);
+	// pr_debug(" REG_PWR_MGMT_1      : 0x%02X\n", saved_regs.pwr_mgmt_1);
+	// pr_debug(" REG_PWR_MGMT_2      : 0x%02X\n", saved_regs.pwr_mgmt_2);
+}
+
+static int inv_save_setting(c6dofimu9_t *st)
+{
+	int result;
+
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_PWR_MGMT_1,
+			&saved_regs.pwr_mgmt_1, 1);
+	if (result)
+		return result;
+
+	/* wake up */
+    saved_regs.pwr_mgmt_1 &= ~C6DOFIMU9_BIT_SLEEP;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_1,
+			&saved_regs.pwr_mgmt_1, 1);
+	if (result)
+		return result;
+
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_INT_ENABLE,
+			&saved_regs.int_enable, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_FIFO_EN,
+			&saved_regs.fifo_en, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_USER_CTRL,
+			&saved_regs.user_ctrl, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_CONFIG,
+			&saved_regs.config, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_GYRO_CONFIG,
+			&saved_regs.gyro_config, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_ACCEL_CONFIG,
+			&saved_regs.accel_config, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_ACCEL_CONFIG_2,
+			&saved_regs.accel_config_2, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_SMPLRT_DIV,
+			&saved_regs.smplrt_div, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_LP_MODE_CFG,
+			&saved_regs.lp_mode, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_PWR_MGMT_2,
+			&saved_regs.pwr_mgmt_2, 1);
+	if (result)
+		return result;
+
+	inv_show_saved_setting(st);
+
+	return result;
+}
+
+static int inv_recover_setting( c6dofimu9_t *st)
+{
+	int result;
+	/* Stop sensors */
+    uint8_t pwr_mgmt_2 = C6DOFIMU9_BIT_PWR_ACCEL_STBY | C6DOFIMU9_BIT_PWR_GYRO_STBY;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_2,
+			&pwr_mgmt_2, 1);
+	if (result)
+		return result;
+
+	/* Restore sensor configurations */
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_INT_ENABLE,
+			&saved_regs.int_enable, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_FIFO_EN,
+			&saved_regs.fifo_en, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL,
+			&saved_regs.user_ctrl, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_CONFIG,
+			&saved_regs.config, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_GYRO_CONFIG,
+			&saved_regs.gyro_config, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_ACCEL_CONFIG,
+			&saved_regs.accel_config, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_ACCEL_CONFIG_2,
+			&saved_regs.accel_config_2, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_SMPLRT_DIV,
+			&saved_regs.smplrt_div, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_LP_MODE_CFG,
+			&saved_regs.lp_mode, 1);
+	if (result)
+		return result;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_1,
+			&saved_regs.pwr_mgmt_1, 1);
+	if (result)
+		return result;
+
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_2,
+			&saved_regs.pwr_mgmt_2, 1);
+	if (result)
+		return result;
+
+	return result;
+}
+
+static int inv_switch_engine(c6dofimu9_t *st, bool en, uint32_t mask)
+{
+	uint8_t data, mgmt_1;
+	int result;
+
+	if (mask == C6DOFIMU9_BIT_PWR_GYRO_STBY) {
+		result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_PWR_MGMT_1, &mgmt_1, 1);
+		if (result)
+			return result;
+		mgmt_1 &= ~C6DOFIMU9_BIT_CLK_MASK;
+	}
+
+	if ((mask == C6DOFIMU9_BIT_PWR_GYRO_STBY) && (!en)) {
+		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_1, &mgmt_1, 1);
+		if (result)
+			return result;
+	}
+
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_PWR_MGMT_2, &data, 1);
+	if (result)
+		return result;
+	if (en)
+		data &= (~mask);
+	else
+		data |= mask;
+	data |= C6DOFIMU9_BIT_FIFO_LP_EN;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_2, &data, 1);
+	if (result)
+		return result;
+
+	if ((mask == C6DOFIMU9_BIT_PWR_GYRO_STBY) && en) {
+		/* only gyro on needs sensor up time */
+		HAL_Delay(SENSOR_UP_TIME);
+		/* after gyro is on & stable, switch internal clock to PLL */
+		mgmt_1 |= C6DOFIMU9_BIT_CLK_PLL;
+		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_1, &mgmt_1, 1);
+		if (result)
+			return result;
+	}
+	if ((mask == C6DOFIMU9_BIT_PWR_ACCEL_STBY) && en)
+		HAL_Delay(REG_UP_TIME);
+
+	return 0;
+}
+
+/**
+ * inv_check_gyro_self_test() - check gyro self test. this function
+ *                                   returns zero as success. A non-zero return
+ *                                   value indicates failure in self test.
+ *  @*st: main data structure.
+ *  @*reg_avg: average value of normal test.
+ *  @*st_avg:  average value of self test
+ */
+static int inv_check_gyro_self_test(c6dofimu9_t *st,
+						int *reg_avg, int *st_avg)
+{
+	uint8_t regs[3];
+	int ret_val, result;
+	int otp_value_zero = 0;
+	int st_shift_prod[3], st_shift_cust[3], i;
+
+	ret_val = 0;
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_20680_XG_ST_DATA, regs, 3);
+	if (result)
+		return result;
+	// pr_debug("%s self_test gyro shift_code - %02x %02x %02x\n",
+	// 	st->hw->name, regs[0], regs[1], regs[2]);
+
+	for (i = 0; i < 3; i++) {
+		if (regs[i] != 0) {
+			st_shift_prod[i] = mpu_st_tb[regs[i] - 1];
+		} else {
+			st_shift_prod[i] = 0;
+			otp_value_zero = 1;
+		}
+	}
+	// pr_debug("%s self_test gyro st_shift_prod - %+d %+d %+d\n",
+	// 	st->hw->name, st_shift_prod[0], st_shift_prod[1],
+	// 	st_shift_prod[2]);
+
+	for (i = 0; i < 3; i++) {
+		st_shift_cust[i] = st_avg[i] - reg_avg[i];
+		if (!otp_value_zero) {
+			/* Self Test Pass/Fail Criteria A */
+			if (st_shift_cust[i] <= DEF_GYRO_CT_SHIFT_DELTA *
+					st_shift_prod[i])
+				ret_val = 1;
+		} else {
+			/* Self Test Pass/Fail Criteria B */
+			if (abs(st_shift_cust[i]) < DEF_GYRO_ST_AL *
+						DEF_SELFTEST_GYRO_SENS *
+						DEF_ST_PRECISION)
+				ret_val = 1;
+		}
+	}
+	// pr_debug("%s self_test gyro st_shift_cust - %+d %+d %+d\n",
+	// 	st->hw->name, st_shift_cust[0], st_shift_cust[1],
+	// 	st_shift_cust[2]);
+
+	if (ret_val == 0) {
+		/* Self Test Pass/Fail Criteria C */
+		for (i = 0; i < 3; i++)
+			if (abs(reg_avg[i]) > DEF_GYRO_OFFSET_MAX *
+						DEF_SELFTEST_GYRO_SENS *
+						DEF_ST_PRECISION)
+				ret_val = 1;
+	}
+
+	return ret_val;
+}
+
+/**
+ * inv_check_accel_self_test() - check 20680 accel self test. this function
+ *                                   returns zero as success. A non-zero return
+ *                                   value indicates failure in self test.
+ *  @*st: main data structure.
+ *  @*reg_avg: average value of normal test.
+ *  @*st_avg:  average value of self test
+ */
+static int inv_check_accel_self_test(c6dofimu9_t *st,
+						int *reg_avg, int *st_avg)
+{
+	int ret_val, result;
+	int st_shift_prod[3], st_shift_cust[3], i;
+	uint8_t regs[3];
+	int otp_value_zero = 0;
+
+	ret_val = 0;
+	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_20680_XA_ST_DATA, 3, regs);
+	if (result)
+		return result;
+	// pr_debug("%s self_test accel shift_code - %02x %02x %02x\n",
+	// 	st->hw->name, regs[0], regs[1], regs[2]);
+
+	for (i = 0; i < 3; i++) {
+		if (regs[i] != 0) {
+			st_shift_prod[i] = mpu_st_tb[regs[i] - 1];
+		} else {
+			st_shift_prod[i] = 0;
+			otp_value_zero = 1;
+		}
+	}
+	// pr_debug("%s self_test accel st_shift_prod - %+d %+d %+d\n",
+	// 	st->hw->name, st_shift_prod[0], st_shift_prod[1],
+	// 	st_shift_prod[2]);
+
+	for (i = 0; i < 3; i++) {
+		st_shift_cust[i] = st_avg[i] - reg_avg[i];
+		if (!otp_value_zero) {
+			/* Self Test Pass/Fail Criteria A */
+			if (st_shift_cust[i] <= DEF_ACCEL_ST_SHIFT_DELTA_MIN * st_shift_prod[i] ||
+					st_shift_cust[i] >= DEF_ACCEL_ST_SHIFT_DELTA_MAX * st_shift_prod[i])
+				ret_val = 1;
+		} else {
+			/* Self Test Pass/Fail Criteria B */
+			if (abs(st_shift_cust[i]) < ACCEL_ST_AL_MIN ||
+					abs(st_shift_cust[i]) > ACCEL_ST_AL_MAX)
+				ret_val = 1;
+		}
+	}
+	// pr_debug("%s self_test accel st_shift_cust - %+d %+d %+d\n",
+	// 	st->hw->name, st_shift_cust[0], st_shift_cust[1],
+	// 	st_shift_cust[2]);
+
+	return ret_val;
+}
+
+/*
+ *  inv_do_test() - do the actual test of self testing
+ */
+static int inv_do_test(c6dofimu9_t *st, int self_test_flag,
+		int *gyro_result, int *accel_result, int lp_mode)
+{
+	int result, i, j, packet_size;
+	uint8_t data[BYTES_PER_SENSOR * 2], d, dd;
+	int fifo_count, packet_count, ind, s;
+    uint8_t reset = 0;
+	packet_size = BYTES_PER_SENSOR * 2;
+
+	/* disable interrupt */
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_INT_ENABLE, &reset, 1);
+	if (result)
+		return result;
+	/* disable the sensor output to FIFO */
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_FIFO_EN, &reset, 1);
+	if (result)
+		return result;
+	/* disable fifo reading */
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL, &reset, 1);
+	if (result)
+		return result;
+	/* clear FIFO */
+    d = C6DOFIMU9_BIT_FIFO_RST;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL, &d, 1);
+	if (result)
+		return result;
+	/* setup parameters */
+    d = INV_FILTER_98HZ;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_CONFIG, &d, 1);
+	if (result)
+		return result;
+
+	/* gyro lp mode */
+	if (lp_mode == 1)
+		d = C6DOFIMU9_BIT_GYRO_CYCLE_EN;
+	else if (lp_mode == 2)
+		d = DEF_SELFTEST_SAMPLE_RATE_ACC_LP;
+	else
+		d = 0;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_LP_MODE_CFG, &d, 1);
+	if (result)
+		return result;
+
+	/* config accel LPF register */
+	if (lp_mode == 2)
+		d = C6DOFIMU9_BIT_ACCEL_FCHOCIE_B;
+	else
+		d = DEF_ST_IAM20680_ACCEL_LPF;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_20680_ACCEL_CONFIG2, &d, 1);
+	if (result)
+		return result;
+
+	if (lp_mode) {
+        d = DEF_SELFTEST_SAMPLE_RATE_LP;
+		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_SMPLRT_DIV,
+				&d, 1);
+	} else {
+        d = DEF_SELFTEST_SAMPLE_RATE;
+		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_SMPLRT_DIV,
+				&d, 1);
+	}
+	if (result)
+		return result;
+	/* wait for the sampling rate change to stabilize */
+	HAL_Delay(SAMPLE_RATE_CHANGE_STABLE);
+    d = self_test_flag | DEF_SELFTEST_GYRO_FS;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_GYRO_CONFIG,
+		&d, 1);
+	if (result)
+		return result;
+
+	d = DEF_SELFTEST_20680_ACCEL_FS;
+	d |= self_test_flag;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_ACCEL_CONFIG, &d, 1);
+	if (result)
+		return result;
+
+	/* wait for the output to get stable */
+	HAL_Delay(DEF_ST_20680_STABLE_TIME);
+
+	/* enable FIFO reading */
+    d = C6DOFIMU9_BIT_FIFO_EN;
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL, &d, 1);
+	if (result)
+		return result;
+	/* enable sensor output to FIFO */
+	d = BITS_GYRO_OUT | BIT_ACCEL_OUT;
+	for (i = 0; i < THREE_AXIS; i++) {
+		gyro_result[i] = 0;
+		accel_result[i] = 0;
+	}
+	s = 0;
+	while (s < 200 /*st->self_test.samples*/) {
+		/* Stop FIFO */
+		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL, &reset, 1);
+		if (result)
+			return result;
+		/* clear FIFO */
+        dd = C6DOFIMU9_BIT_FIFO_RST;
+		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL, &dd, 1);
+		if (result)
+			return result;
+		/* enable FIFO reading */
+        dd = C6DOFIMU9_BIT_FIFO_EN;
+		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL, &dd, 1);
+		if (result)
+			return result;
+
+		/* accel lp mode */
+		dd = C6DOFIMU9_BIT_CLK_PLL;
+		if (lp_mode == 2)
+			dd |= C6DOFIMU9_BIT_LP_EN;
+		else
+			dd &= ~C6DOFIMU9_BIT_LP_EN;
+		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_1, &dd, 1);
+		if (result)
+			return result;
+
+		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_FIFO_EN, &d, 1);
+		if (result)
+			return result;
+		if (lp_mode)
+			HAL_Delay(DEF_GYRO_WAIT_TIME_LP);
+		else
+			HAL_Delay(DEF_GYRO_WAIT_TIME);
+
+		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_FIFO_EN, &reset, 1);
+		if (result)
+			return result;
+
+		result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_FIFO_COUNTH,
+					data, FIFO_COUNT_BYTE);
+		if (result)
+			return result;
+		// fifo_count = be16_to_cpup((__be16 *)(&data[0]));
+        fifo_count = data[0] << 8 | data[1];
+		// pr_debug("%s self_test fifo_count - %d\n",
+		// 	 st->hw->name, fifo_count);
+		packet_count = fifo_count / packet_size;
+		i = 0;
+		while ((i < packet_count) && (s < 200)) {
+			short vals[3];
+
+			result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_FIFO_R_W,
+				 data, packet_size);
+			if (result)
+				return result;
+			ind = 0;
+
+			for (j = 0; j < THREE_AXIS; j++) {
+				// vals[j] = (short) be16_to_cpup(
+				// 	(__be16 *)(&data[ind + 2 * j]));
+                vals[j] = data[ind + 2 * j] << 8 | data[(ind + 2 * j) + 1];
+				accel_result[j] += vals[j];
+			}
+			ind += BYTES_PER_SENSOR;
+			// pr_debug(
+			// 	"%s self_test accel data - %d %+d %+d %+d\n",
+			// 	st->hw->name, s, vals[0], vals[1], vals[2]);
+
+			for (j = 0; j < THREE_AXIS; j++) {
+				// vals[j] = (short)be16_to_cpup(
+				// 	(__be16 *)(&data[ind + 2 * j]));
+                vals[j] = data[ind + 2 * j] << 8 | data[(ind + 2 * j) + 1];
+				gyro_result[j] += vals[j];
+			}
+			// pr_debug("%s self_test gyro data - %d %+d %+d %+d\n",
+			// 	st->hw->name, s, vals[0], vals[1], vals[2]);
+
+			s++;
+			i++;
+		}
+	}
+
+	for (j = 0; j < THREE_AXIS; j++) {
+		accel_result[j] = accel_result[j] / s;
+		accel_result[j] *= DEF_ST_PRECISION;
+	}
+	for (j = 0; j < THREE_AXIS; j++) {
+		gyro_result[j] = gyro_result[j] / s;
+		gyro_result[j] *= DEF_ST_PRECISION;
+	}
+
+	return 0;
+}
+
+int inv_set_accel_config2(c6dofimu9_t *st, bool cycle_mode)
+{
+	int cycle_freq[] = {275, 192, 111, 59};
+	int cont_freq[] = {219, 219, 99, 45, 22, 11, 6};
+	int i, r, rate;
+	uint8_t v, d;
+
+	v = 0;
+#ifdef CONFIG_INV_MPU_IIO_ICM20690
+	v |= BIT_FIFO_SIZE_1K;
+#endif
+	if (cycle_mode) {
+		rate = (BASE_SAMPLE_RATE << 1);
+		i = sizeof(cycle_freq) - 1;
+		while (i > 0) {
+			if (rate < cycle_freq[i])
+				break;
+			i--;
+		}
+        d = v | (i << 4) | 7;
+		r = c6dofimu9_generic_write(st, C6DOFIMU9_REG_ACCEL_CONFIG_2, 
+								&d, 1);
+		if (r)
+			return r;
+		st->accel_lp_mode = 1;
+	} else {
+		rate = (BASE_SAMPLE_RATE >> 1);
+		for (i = 1; i < sizeof(cont_freq); i++) {
+			if (rate >= cont_freq[i])
+				break;
+		}
+		if (i > 6)
+			i = 6;
+        d = v | i;
+		r = c6dofimu9_generic_write(st, C6DOFIMU9_REG_ACCEL_CONFIG_2, &d, 1);
+		if (r)
+			return r;
+		st->accel_lp_mode = 0;
+	}
+
+	return 0;
+}
+
+static int inv_lp_en_off_mode(c6dofimu9_t *st, bool on)
+{
+    int r = 0;
+    uint8_t d;
+
+	if (!st->is_asleep)
+		return 0;
+
+// #if !defined(CONFIG_INV_MPU_IIO_ICM42600) && !defined(CONFIG_INV_MPU_IIO_ICM43600) && !defined(CONFIG_INV_MPU_IIO_ICM45600)
+    d = C6DOFIMU9_BIT_CLK_PLL;
+	r = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_1, &d, 1);
+	// usleep_range(REG_UP_TIME_USEC, REG_UP_TIME_USEC + 1);
+// #endif
+	st->is_asleep = 0;
+// #if defined(CONFIG_INV_MPU_IIO_ICM20602) || \
+// 	defined(CONFIG_INV_MPU_IIO_ICM20690) || \
+// 	defined(CONFIG_INV_MPU_IIO_IAM20680) || \
+// 	defined(CONFIG_INV_MPU_IIO_ICM20608D)
+	inv_set_accel_config2(st, false);
+// #endif
+	return r;
+}
+
+static int inv_power_up_self_test(c6dofimu9_t *st)
+{
+	int result;
+    uint8_t d = 0;
+	result = inv_lp_en_off_mode(st, true);
+
+	/* make sure no interrupts */
+	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_INT_ENABLE, &d, 1);
+	if (result)
+		return result;
+
+	if (result)
+		return result;
+	result = inv_switch_engine(st, true, C6DOFIMU9_BIT_PWR_ACCEL_STBY);
+	if (result)
+		return result;
+	result = inv_switch_engine(st, true, C6DOFIMU9_BIT_PWR_GYRO_STBY);
+	if (result)
+		return result;
+
+	return 0;
+}
+
+/*
+ *  inv_hw_self_test() - main function to do hardware self test
+ */
+int c6dofimu9_hw_selftest ( c6dofimu9_t *ctx )
+{
+int result;
+	int gyro_bias_st[THREE_AXIS], gyro_bias_regular[THREE_AXIS];
+	int accel_bias_st[THREE_AXIS], accel_bias_regular[THREE_AXIS];
+#ifdef ENABLE_GYRO_HW_SELFTEST
+	int gyro_bias_regular_lp[THREE_AXIS];
+	int accel_bias_regular_lp[THREE_AXIS];
+	int dummy_bias_regular[THREE_AXIS];
+#endif
+	int test_times, i;
+	char accel_result, gyro_result;
+
+	result = inv_save_setting(ctx);
+	if (result)
+		return result;
+
+	result = inv_power_up_self_test(ctx);
+	if (result)
+		return result;
+	accel_result = 0;
+	gyro_result = 0;
+	test_times = DEF_ST_TRY_TIMES;
+	while (test_times > 0) {
+		result = inv_do_test(ctx, 0, gyro_bias_regular,
+			accel_bias_regular, 0);
+		if (result == -1)
+			test_times--;
+		else
+			test_times = 0;
+	}
+	if (result)
+		goto test_fail;
+	// pr_debug("%s self_test accel bias_regular - %+d %+d %+d\n",
+	// 	st->hw->name, accel_bias_regular[0],
+	// 	accel_bias_regular[1], accel_bias_regular[2]);
+	// pr_debug("%s self_test gyro bias_regular - %+d %+d %+d\n",
+	// 	st->hw->name, gyro_bias_regular[0], gyro_bias_regular[1],
+	// 	gyro_bias_regular[2]);
+
+	test_times = DEF_ST_TRY_TIMES;
+	while (test_times > 0) {
+		result = inv_do_test(ctx, C6DOFIMU9_BITS_SELF_TEST_EN, gyro_bias_st,
+					accel_bias_st, 0);
+		if (result == -1)
+			test_times--;
+		else
+			break;
+	}
+	if (result)
+		goto test_fail;
+	// pr_debug("%s self_test accel bias_st - %+d %+d %+d\n",
+	// 	st->hw->name, accel_bias_st[0], accel_bias_st[1],
+	// 	accel_bias_st[2]);
+	// pr_debug("%s self_test gyro bias_st - %+d %+d %+d\n",
+	// 	st->hw->name, gyro_bias_st[0], gyro_bias_st[1],
+	// 	gyro_bias_st[2]);
+
+#ifdef ENABLE_GYRO_HW_SELFTEST
+	/* lp gyro mode */
+	test_times = DEF_ST_TRY_TIMES;
+	while (test_times > 0) {
+		result = inv_do_test(st, 0, gyro_bias_regular_lp,
+			dummy_bias_regular, 1);
+		if (result == -1)
+			test_times--;
+		else
+			test_times = 0;
+	}
+	if (result)
+		goto test_fail;
+	// pr_debug("%s self_test gyro bias_regular lp - %+d %+d %+d\n",
+	// 	 st->hw->name, gyro_bias_regular_lp[0], gyro_bias_regular_lp[1],
+	// 	 gyro_bias_regular_lp[2]);
+
+	/* lp accel mode */
+	test_times = DEF_ST_TRY_TIMES;
+	while (test_times > 0) {
+		result = inv_do_test(st, 0, dummy_bias_regular,
+			accel_bias_regular_lp, 2);
+		if (result == -1)
+			test_times--;
+		else
+			test_times = 0;
+	}
+	if (result)
+		goto test_fail;
+	// pr_debug("%s self_test accel bias_regular lp - %+d %+d %+d\n",
+	// 	 st->hw->name, accel_bias_regular_lp[0],
+	// 	 accel_bias_regular_lp[1], accel_bias_regular_lp[2]);
+#endif
+
+	/* copy bias */
+	for (i = 0; i < 3; i++) {
+		/* gyro : LN bias as LN is default mode */
+		ctx->gyro_st_bias[i] = gyro_bias_regular[i] / DEF_ST_PRECISION;
+		/* accel : LN bias as LN is default mode */
+		ctx->accel_st_bias[i] = accel_bias_regular[i] / DEF_ST_PRECISION;
+	}
+
+	/* Check is done on continuous mode data */
+	accel_result = !inv_check_accel_self_test(ctx,
+		accel_bias_regular, accel_bias_st);
+	gyro_result = !inv_check_gyro_self_test(ctx,
+		gyro_bias_regular, gyro_bias_st);
+
+test_fail:
+	inv_recover_setting(ctx);
+	return (accel_result << DEF_ST_ACCEL_RESULT_SHIFT) | gyro_result;
 }
 
 // ------------------------------------------------------------------------- END

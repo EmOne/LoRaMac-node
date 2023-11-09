@@ -105,6 +105,12 @@ int BoardGetCapSenseStatus( uint8_t* cap );
  * \retval a number of channels
  */
 void BoardGetIMU( int16_t* gyro_x ,int16_t* gyro_y, int16_t* gyro_z, int16_t* accel_x, int16_t* accel_y, int16_t* accel_z);
+/*!
+ * \brief Get the imu temperature sense status
+ *
+ * \retval a number of channels
+ */
+void BoardGetIMUTemperature(int32_t * temperature);
 
 /*!
  * Returns a pseudo random seed generated using the MCU Unique ID

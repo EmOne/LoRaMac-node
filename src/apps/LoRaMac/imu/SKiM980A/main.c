@@ -79,7 +79,7 @@
  *
  * \remark Please note that LORAWAN_DEFAULT_DATARATE is used only when ADR is disabled 
  */
-#define LORAWAN_DEFAULT_DATARATE                    DR_2
+#define LORAWAN_DEFAULT_DATARATE                    DR_3
 
 /*!
  * LoRaWAN confirmed messages
@@ -257,6 +257,12 @@ extern Gpio_t Led3; // App
  * UART object used for command line interface handling
  */
 extern Uart_t Uart1;
+
+#if ( USE_IMU == 1 )
+int16_t acc_x = 0, acc_y = 0, acc_z = 0;
+int16_t gyr_x = 0, gyr_y = 0, gyr_z = 0;
+int32_t imu_temperature;
+#endif
 
 /*!
  * Main application entry point.
@@ -465,11 +471,8 @@ static void PrepareTxFrame( void )
 
     // CayenneLppReset( );
 
-    
     uint16_t vdd = 0;
     int16_t celsius;
-    int16_t acc_x, acc_y, acc_z;
-    int16_t gyr_x, gyr_y, gyr_z;
 
     // Read the current potentiometer setting in percent
 #if (USE_POTENTIOMETER == 1)
@@ -489,7 +492,7 @@ static void PrepareTxFrame( void )
 #endif
 
 #if (USE_IMU == 1)
-    BoardGetIMU(&gyr_x, &gyr_y, &gyr_z, &acc_x, &acc_y, &acc_z);
+    // BoardGetIMU(&gyr_x, &gyr_y, &gyr_z, &acc_x, &acc_y, &acc_z);
     AppData.Buffer[channel++] = gyr_x >> 8;
     AppData.Buffer[channel++] = gyr_x >> 0;
     AppData.Buffer[channel++] = gyr_y >> 8;
@@ -620,6 +623,18 @@ static void OnLed4TimerEvent( void* context )
     BoardGetPotiLevel();
 #elif ( USE_IMU == 1)
 //TODO: IMU Read FIFO
+    int16_t lacc_x, lacc_y, lacc_z;
+    int16_t lgyr_x, lgyr_y, lgyr_z;
+    int32_t lTemperature;
+    BoardGetIMU(&lgyr_x, &lgyr_y, &lgyr_z, &lacc_x, &lacc_y, &lacc_z);
+    acc_x += lacc_x;
+    acc_y += lacc_y;
+    acc_z += lacc_z;
+    gyr_x += lgyr_x;
+    gyr_y += lgyr_y;
+    gyr_z += lgyr_z;
+    BoardGetIMUTemperature(&lTemperature);
+    imu_temperature = lTemperature;
 #endif
     TimerStart( &Led4Timer );
 }

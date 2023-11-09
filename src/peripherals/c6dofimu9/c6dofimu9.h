@@ -114,17 +114,53 @@
 #define C6DOFIMU9_REG_ZG_OFFS_USRH                                  0x17
 #define C6DOFIMU9_REG_ZG_OFFS_USRL                                  0x18
 #define C6DOFIMU9_REG_SMPLRT_DIV                                    0x19
+
 #define C6DOFIMU9_REG_CONFIG                                        0x1A
+#define C6DOFIMU9_EXT_SYNC_SET		0x08
+
 #define C6DOFIMU9_REG_GYRO_CONFIG                                   0x1B
+#define C6DOFIMU9_BITS_SELF_TEST_EN	0xE0
+#define C6DOFIMU9_SHIFT_GYRO_FS_SEL	0x03
+
 #define C6DOFIMU9_REG_ACCEL_CONFIG                                  0x1C
+#define C6DOFIMU9_SHIFT_ACCEL_FS		0x03
+
 #define C6DOFIMU9_REG_ACCEL_CONFIG_2                                0x1D
+#define C6DOFIMU9_BIT_ACCEL_FCHOCIE_B	0x08
+
 #define C6DOFIMU9_REG_LP_MODE_CFG                                   0x1E
+#define C6DOFIMU9_BIT_GYRO_CYCLE_EN	0x80
+
 #define C6DOFIMU9_REG_ACCEL_WOM_THR                                 0x1F
+#define C6DOFIMU9_REG_ACCEL_WOM_X_THR	0x20
+#define C6DOFIMU9_REG_ACCEL_WOM_Y_THR	0x21
+#define C6DOFIMU9_REG_ACCEL_WOM_Z_THR	0x22
+
 #define C6DOFIMU9_REG_FIFO_EN                                       0x23
+#define C6DOFIMU9_BITS_GYRO_FIFO_EN	0x70
+#define C6DOFIMU9_BIT_ACCEL_FIFO_EN	0x08
+
 #define C6DOFIMU9_REG_FSYNC_INT                                     0x36
+#define C6DOFIMU9_BIT_FSYNC_INT		0x80
+
 #define C6DOFIMU9_REG_INT_PIN_CFG                                   0x37
+
 #define C6DOFIMU9_REG_INT_ENABLE                                    0x38
+#define C6DOFIMU9_BIT_WOM_X_INT_EN	0x80
+#define C6DOFIMU9_BIT_WOM_Y_INT_EN	0x40
+#define C6DOFIMU9_BIT_WOM_Z_INT_EN	0x20
+#define C6DOFIMU9_BIT_WOM_ALL_INT_EN	0xE0
+#define C6DOFIMU9_BIT_FSYNC_INT_EN	0x8
+#define C6DOFIMU9_BIT_DATA_RDY_EN		0x1
+
 #define C6DOFIMU9_REG_INT_STATUS                                    0x3A
+#define C6DOFIMU9_BIT_WOM_X_INT		0x80
+#define C6DOFIMU9_BIT_WOM_Y_INT		0x40
+#define C6DOFIMU9_BIT_WOM_Z_INT		0x20
+#define C6DOFIMU9_BIT_FIFO_OVF_INT	0x10
+#define C6DOFIMU9_BIT_GDRIVE_INT	0x04
+#define C6DOFIMU9_BIT_DRY_INT   	0x01
+
 #define C6DOFIMU9_REG_ACCEL_XOUT_H                                  0x3B
 #define C6DOFIMU9_REG_ACCEL_XOUT_L                                  0x3C
 #define C6DOFIMU9_REG_ACCEL_YOUT_H                                  0x3D
@@ -140,20 +176,58 @@
 #define C6DOFIMU9_REG_GYRO_ZOUT_H                                   0x47
 #define C6DOFIMU9_REG_GYRO_ZOUT_L                                   0x48
 #define C6DOFIMU9_REG_SIGNAL_PATH_RESET                             0x68
+
 #define C6DOFIMU9_REG_ACCEL_INTEL_CTRL                              0x69
+#define C6DOFIMU9_BIT_ACCEL_INTEL_EN	0x80
+#define C6DOFIMU9_BIT_ACCEL_INTEL_MODE	0x40
+
 #define C6DOFIMU9_REG_USER_CTRL                                     0x6A
+#define C6DOFIMU9_BIT_COND_RST		0x01
+#define C6DOFIMU9_BIT_FIFO_RST		0x04
+#define C6DOFIMU9_BIT_FIFO_EN		0x40
+
 #define C6DOFIMU9_REG_PWR_MGMT_1                                    0x6B
+#define C6DOFIMU9_BIT_H_RESET		0x80
+#define C6DOFIMU9_BIT_SLEEP		0x40
+#define C6DOFIMU9_BIT_LP_EN		0x20
+#define C6DOFIMU9_BIT_CLK_PLL		0x01
+#define C6DOFIMU9_BIT_CLK_MASK		0x07
+
 #define C6DOFIMU9_REG_PWR_MGMT_2                                    0x6C
+#define C6DOFIMU9_BIT_PWR_ACCEL_STBY	0x38
+#define C6DOFIMU9_BIT_PWR_GYRO_STBY	0x07
+#define C6DOFIMU9_BIT_PWR_ALL_OFF		0x3F
+#define C6DOFIMU9_BIT_FIFO_LP_EN		0x80
+
 #define C6DOFIMU9_REG_FIFO_COUNTH                                   0x72
 #define C6DOFIMU9_REG_FIFO_COUNTL                                   0x73
 #define C6DOFIMU9_REG_FIFO_R_W                                      0x74
 #define C6DOFIMU9_REG_WHO_AM_I                                      0x75
+
+#define C6DOFIMU9_REG_20680_XG_ST_DATA	0x00
+#define C6DOFIMU9_REG_20680_XA_ST_DATA	0xD
+
 #define C6DOFIMU9_REG_XA_OFFSET_H                                   0x77
 #define C6DOFIMU9_REG_XA_OFFSET_L                                   0x78
 #define C6DOFIMU9_REG_YA_OFFSET_H                                   0x7A
 #define C6DOFIMU9_REG_YA_OFFSET_L                                   0x7B
 #define C6DOFIMU9_REG_ZA_OFFSET_H                                   0x7D
 #define C6DOFIMU9_REG_ZA_OFFSET_L                                   0x7E
+
+#define C6DOFIMU9_REG_20680_ACCEL_CONFIG2	0x1D
+#define C6DOFIMU9_BIT_ACCEL_FCHOCIE_B	0x08
+#define C6DOFIMU9_BIT_FIFO_SIZE_1K	0x40
+
+#define C6DOFIMU9_REG_LP_MODE_CFG		0x1E
+
+#define C6DOFIMU9_REG_20680_LP_ACCEL_ODR	0x1E
+#define C6DOFIMU9_REG_20680_ACCEL_WOM_THR	0x1F
+
+/* data output control reg 2 */
+#define C6DOFIMU9_ACCEL_ACCURACY_SET	0x4000
+#define C6DOFIMU9_GYRO_ACCURACY_SET		0x2000
+#define C6DOFIMU9_CPASS_ACCURACY_SET	0x1000
+
 /** \} */
 
 /**
@@ -227,6 +301,123 @@
 #define C6DOFIMU9_BM_ENABLE_ACCEL_FIFO                              0x08
 /** \} */
 
+#define MAX_FIFO_READ_SIZE       128
+#define MAX_DMP_READ_SIZE        16
+
+#define ACCEL_COVARIANCE	0
+#define BYTES_PER_SENSOR	6
+#define BYTES_FOR_TEMP		2
+#define FIFO_COUNT_BYTE		2
+#define HARDWARE_FIFO_SIZE	512
+#define FIFO_SIZE		(HARDWARE_FIFO_SIZE * 7 / 10)
+#define POWER_UP_TIME		100
+#define REG_UP_TIME_USEC	100
+#define LEFT_OVER_BYTES		128
+#define IIO_BUFFER_BYTES	8
+#define BASE_SAMPLE_RATE	1000
+#define DRY_RUN_TIME		50
+#define INV_IAM20680_GYRO_START_TIME	35
+#define INV_IAM20680_ACCEL_START_TIME	30
+#define MODE_1K_INIT_SAMPLE	5
+#define FIRST_SAMPLE_BUF_MS	30
+
+/* temperature */
+#define TEMP_SENSITIVITY	32680   // 326.8 LSB/degC * 100
+#define TEMP_OFFSET		2500    // 25 degC * 100
+
+#define MPU_DEFAULT_DMP_FREQ	200
+#define PEDOMETER_FREQ		(MPU_DEFAULT_DMP_FREQ >> 2)
+#define SENSOR_FUSION_MIN_RATE	100
+#define GESTURE_ACCEL_RATE	50
+#define ESI_GYRO_RATE		1000
+#define MAX_FIFO_PACKET_READ	6
+#define MAX_BATCH_FIFO_SIZE	FIFO_SIZE
+
+#define MIN_MST_ODR_CONFIG	4
+#define MAX_MST_ODR_CONFIG	5
+/* initial rate is important. For non-DMP mode, it is set as 4 1000/256*/
+#define MPU_INIT_SENSOR_RATE	4
+#define MAX_MST_NON_COMPASS_ODR_CONFIG	7
+#define THREE_AXES		3
+#define NINE_ELEM		(THREE_AXES * THREE_AXES)
+#define MPU_TEMP_SHIFT		16
+
+#define DMP_DIVIDER		(BASE_SAMPLE_RATE / MPU_DEFAULT_DMP_FREQ)
+#define DEFAULT_BATCH_RATE	400
+#define DEFAULT_BATCH_TIME	(MSEC_PER_SEC / DEFAULT_BATCH_RATE)
+
+#define TEMPERATURE_SCALE	3340827L
+#define TEMPERATURE_OFFSET	1376256L
+#define SECONDARY_INIT_WAIT	100
+
+/* data limit definitions */
+#define MIN_FIFO_RATE		4
+#define MAX_FIFO_RATE		MPU_DEFAULT_DMP_FREQ
+
+#define MAX_MPU_MEM		8192
+#define MAX_PRS_RATE		281
+
+#define DEF_SELFTEST_GYRO_SENS		(32768 / 250)
+/* wait time before collecting data */
+#define MAX_PACKETS			20
+#define SELFTEST_WAIT_TIME		(MAX_PACKETS * 10)
+#define DEF_ST_STABLE_TIME		20
+#define DEF_GYRO_SCALE			131
+#define DEF_ST_PRECISION		1000
+#define DEF_ST_ACCEL_FS_MG		2000UL
+#define DEF_ST_SCALE			32768
+#define DEF_ST_TRY_TIMES		2
+#define DEF_ST_ACCEL_RESULT_SHIFT	1
+#define DEF_ST_SAMPLES			200
+
+#define DEF_ACCEL_ST_SHIFT_DELTA_MIN	500
+#define DEF_ACCEL_ST_SHIFT_DELTA_MAX	1500
+#define DEF_GYRO_CT_SHIFT_DELTA		500
+
+#define SENSOR_UP_TIME			30
+#define REG_UP_TIME			2
+
+#define DEF_ST_ACCEL_FS_MG		2000UL
+#define DEF_ACCEL_ST_SHIFT_DELTA	500
+#define ACCEL_ST_AL_MIN ((DEF_ACCEL_ST_AL_MIN * DEF_ST_SCALE \
+				 / DEF_ST_ACCEL_FS_MG) * DEF_ST_PRECISION)
+#define ACCEL_ST_AL_MAX ((DEF_ACCEL_ST_AL_MAX * DEF_ST_SCALE \
+				 / DEF_ST_ACCEL_FS_MG) * DEF_ST_PRECISION)
+
+#define THREE_AXIS			        3
+#define DEF_ST_IAM20680_ACCEL_LPF	2
+#define DEF_SELFTEST_SAMPLE_RATE	0  /* 1000Hz */
+#define DEF_SELFTEST_SAMPLE_RATE_LP	3  /*  250Hz */
+#define DEF_SELFTEST_SAMPLE_RATE_ACC_LP	10 /*  250Hz LPOSC_CLKSEL */
+#define SAMPLE_RATE_CHANGE_STABLE	50
+#define DEF_SELFTEST_20680_ACCEL_FS	(0 << 3)
+#define DEF_SELFTEST_GYRO_FS		(0 << 3)
+#define DEF_ST_20680_STABLE_TIME	20
+#define BIT_ACCEL_OUT			    0x08
+#define BITS_GYRO_OUT			    0x70
+
+#define DEF_GYRO_WAIT_TIME		10
+#define DEF_GYRO_WAIT_TIME_LP		50
+
+/* Gyro Offset Max Value (dps) */
+#define DEF_GYRO_OFFSET_MAX		20
+/* Gyro Self Test Absolute Limits ST_AL (dps) */
+#define DEF_GYRO_ST_AL			60
+/* Accel Self Test Absolute Limits ST_AL (mg) */
+#define DEF_ACCEL_ST_AL_MIN		225
+#define DEF_ACCEL_ST_AL_MAX		675
+
+enum inv_filter_e {
+	INV_FILTER_256HZ_NOLPF2 = 0,
+	INV_FILTER_188HZ,
+	INV_FILTER_98HZ,
+	INV_FILTER_42HZ,
+	INV_FILTER_20HZ,
+	INV_FILTER_10HZ,
+	INV_FILTER_5HZ,
+	INV_FILTER_2100HZ_NOLPF,
+	NUM_FILTER
+};
 /**
  * \defgroup device_id  Device ID
  * \{
@@ -241,6 +432,56 @@
  * \{
  */
 
+struct recover_regs {
+	uint8_t int_enable;		/* REG_INT_ENABLE */
+	uint8_t fifo_en;		/* REG_FIFO_EN */
+	uint8_t user_ctrl;		/* REG_USER_CTRL */
+	uint8_t config;		/* REG_CONFIG */
+	uint8_t gyro_config;		/* REG_GYRO_CONFIG */
+	uint8_t accel_config;	/* REG_ACCEL_CONFIG */
+	uint8_t accel_config_2;	/* REG_ACCEL_CONFIG_2 */
+	uint8_t smplrt_div;		/* REG_SAMPLE_RATE_DIV */
+	uint8_t lp_mode;		/* REG_LP_MODE_CTRL */
+	uint8_t pwr_mgmt_1;		/* REG_PWR_MGMT_1 */
+	uint8_t pwr_mgmt_2;		/* REG_PWR_MGMT_2 */
+};
+
+static struct recover_regs saved_regs;
+
+static const uint16_t mpu_st_tb[256] = {
+	2620, 2646, 2672, 2699, 2726, 2753, 2781, 2808,
+	2837, 2865, 2894, 2923, 2952, 2981, 3011, 3041,
+	3072, 3102, 3133, 3165, 3196, 3228, 3261, 3293,
+	3326, 3359, 3393, 3427, 3461, 3496, 3531, 3566,
+	3602, 3638, 3674, 3711, 3748, 3786, 3823, 3862,
+	3900, 3939, 3979, 4019, 4059, 4099, 4140, 4182,
+	4224, 4266, 4308, 4352, 4395, 4439, 4483, 4528,
+	4574, 4619, 4665, 4712, 4759, 4807, 4855, 4903,
+	4953, 5002, 5052, 5103, 5154, 5205, 5257, 5310,
+	5363, 5417, 5471, 5525, 5581, 5636, 5693, 5750,
+	5807, 5865, 5924, 5983, 6043, 6104, 6165, 6226,
+	6289, 6351, 6415, 6479, 6544, 6609, 6675, 6742,
+	6810, 6878, 6946, 7016, 7086, 7157, 7229, 7301,
+	7374, 7448, 7522, 7597, 7673, 7750, 7828, 7906,
+	7985, 8065, 8145, 8227, 8309, 8392, 8476, 8561,
+	8647, 8733, 8820, 8909, 8998, 9088, 9178, 9270,
+	9363, 9457, 9551, 9647, 9743, 9841, 9939, 10038,
+	10139, 10240, 10343, 10446, 10550, 10656, 10763, 10870,
+	10979, 11089, 11200, 11312, 11425, 11539, 11654, 11771,
+	11889, 12008, 12128, 12249, 12371, 12495, 12620, 12746,
+	12874, 13002, 13132, 13264, 13396, 13530, 13666, 13802,
+	13940, 14080, 14221, 14363, 14506, 14652, 14798, 14946,
+	15096, 15247, 15399, 15553, 15709, 15866, 16024, 16184,
+	16346, 16510, 16675, 16842, 17010, 17180, 17352, 17526,
+	17701, 17878, 18057, 18237, 18420, 18604, 18790, 18978,
+	19167, 19359, 19553, 19748, 19946, 20145, 20347, 20550,
+	20756, 20963, 21173, 21385, 21598, 21814, 22033, 22253,
+	22475, 22700, 22927, 23156, 23388, 23622, 23858, 24097,
+	24338, 24581, 24827, 25075, 25326, 25579, 25835, 26093,
+	26354, 26618, 26884, 27153, 27424, 27699, 27976, 28255,
+	28538, 28823, 29112, 29403, 29697, 29994, 30294, 30597,
+	30903, 31212, 31524, 31839, 32157, 32479, 32804
+};
 /**
  * @brief Communication type.
  */
@@ -250,7 +491,7 @@ typedef uint8_t  spi_master_chip_select_polarity_t;
 /**
  * @brief Master Input/Output type.
  */
-typedef void ( *c6dofimu9_master_io_t )( struct c6dofimu9_s*, uint8_t, uint8_t*, uint8_t );
+typedef int ( *c6dofimu9_master_io_t )( struct c6dofimu9_s*, uint8_t, uint8_t*, uint8_t );
 
 /**
  * @brief Click ctx object definition.
@@ -278,7 +519,11 @@ typedef struct c6dofimu9_s
     c6dofimu9_master_io_t  write_f;
     c6dofimu9_master_io_t  read_f;
     c6dofimu9_select_t master_sel;
-
+    
+    int accel_st_bias[3];
+    int gyro_st_bias[3];
+	uint8_t is_asleep;
+	uint8_t accel_lp_mode;
 } c6dofimu9_t;
 
 /**
@@ -361,7 +606,7 @@ void c6dofimu9_default_cfg ( c6dofimu9_t *ctx );
  *
  * @description This function writes data to the desired register.
  */
-void c6dofimu9_generic_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len );
+int c6dofimu9_generic_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len );
 
 /**
  * @brief Generic read function.
@@ -373,7 +618,7 @@ void c6dofimu9_generic_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf,
  *
  * @description This function reads data from the desired register.
  */
-void c6dofimu9_generic_read ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len );
+int c6dofimu9_generic_read ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len );
 
 /**
  * @brief Check interrupt state function
@@ -762,6 +1007,9 @@ void c6dofimu9_get_accel_data ( c6dofimu9_t *ctx, int16_t *p_accel_x, int16_t *p
  */
 void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, int16_t *p_gyro_x, int16_t *p_gyro_y, int16_t *p_gyro_z );
 
+void c6dofimu9_get_temperature_data ( c6dofimu9_t *ctx, int32_t *temp );
+
+int c6dofimu9_hw_selftest ( c6dofimu9_t *ctx );
 
 #ifdef __cplusplus
 }

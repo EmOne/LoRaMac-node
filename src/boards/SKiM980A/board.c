@@ -54,7 +54,7 @@
 
 Gpio_t imu_sync;
 Gpio_t imu_interupt;
-static c6dofimu9_t c6dofimu9;
+c6dofimu9_t c6dofimu9;
 c6dofimu9_cfg_t cfg;
 
 #endif /* IMU */
@@ -102,6 +102,7 @@ static void SystemClockReConfig( void );
  * Flag to indicate if the MCU is Initialized
  */
 static bool McuInitialized = false;
+static bool PeripheralInitialized = false;
 
 /*!
  * UART2 FIFO buffers size
@@ -125,6 +126,9 @@ void BoardCriticalSectionEnd( uint32_t *mask )
 
 void BoardInitPeriph( void )
 {
+    if (PeripheralInitialized == false)
+    {
+
 #if (USE_TS == 1)
     MX_TOUCHSENSING_Init();
 #elif (USE_IMU == 1)
@@ -145,9 +149,17 @@ void BoardInitPeriph( void )
 			C6DOFIMU9_ACCEL_FULL_SCALE_2g);
 	c6dofimu9_set_accel_avg_filter_mode(&c6dofimu9,
 			C6DOFIMU9_ACCEL_AVERAGE_4_SAMPLES);
-    // GpioInit( &imu_sync, IMU_SYNC, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
-    // GpioInit( &imu_interupt, IMU_INT, PIN_INPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
+    
+    c6dofimu9_hw_selftest(&c6dofimu9);
+    c6dofimu9_enable_data_ready_interrupt(&c6dofimu9);
+    c6dofimu9_enable_gyro_interrupt(&c6dofimu9);
+    c6dofimu9_enable_accel_interrupt(&c6dofimu9);
+    c6dofimu9_enable_fifo(&c6dofimu9, 0xF8);
+
 #endif
+
+        PeripheralInitialized = true;
+    }
 }
 
 void BoardInitMcu( void )
@@ -505,6 +517,11 @@ void BoardGetIMU( int16_t* gyro_x ,int16_t* gyro_y, int16_t* gyro_z, int16_t* ac
     c6dofimu9_get_gyro_data(&c6dofimu9, gyro_x, gyro_y,
                   gyro_z);
     HAL_Delay(10);
+}
+
+void BoardGetIMUTemperature(int32_t * temperature)
+{
+    c6dofimu9_get_temperature_data(&c6dofimu9, temperature);
 }
 #endif
 
