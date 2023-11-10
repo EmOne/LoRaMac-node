@@ -24,8 +24,14 @@
  */
 #include "stm32l1xx.h"
 #include "delay-board.h"
+#include "rtc-board.h"
 
 void DelayMsMcu( uint32_t ms )
 {
     HAL_Delay( ms );
+}
+
+void HAL_Delay(__IO uint32_t Delay)
+{
+  RtcDelayMs(Delay);
 }

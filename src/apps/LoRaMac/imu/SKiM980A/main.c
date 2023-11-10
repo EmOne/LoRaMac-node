@@ -273,7 +273,7 @@ int main( void )
     BoardInitPeriph( );
 
     TimerInit( &Led4Timer, OnLed4TimerEvent );
-    TimerSetValue( &Led4Timer, 1000 );
+    TimerSetValue( &Led4Timer, 50 );
     TimerStart( &Led4Timer );
 
     TimerInit( &Led2Timer, OnLed2TimerEvent );
@@ -627,12 +627,22 @@ static void OnLed4TimerEvent( void* context )
     int16_t lgyr_x, lgyr_y, lgyr_z;
     int32_t lTemperature;
     BoardGetIMU(&lgyr_x, &lgyr_y, &lgyr_z, &lacc_x, &lacc_y, &lacc_z);
-    acc_x += lacc_x;
-    acc_y += lacc_y;
-    acc_z += lacc_z;
-    gyr_x += lgyr_x;
-    gyr_y += lgyr_y;
-    gyr_z += lgyr_z;
+    acc_x = lacc_x;
+    acc_y = lacc_y;
+    acc_z = lacc_z;
+    gyr_x = lgyr_x;
+    gyr_y = lgyr_y;
+    gyr_z = lgyr_z;
+
+    printf("AX:%ld ", acc_x);
+    printf("AY:%ld ", acc_y);
+    printf("AZ:%ld\r\n", acc_z);
+    printf("GX:%ld ", gyr_x);
+    printf("GY:%ld ", gyr_y);
+    printf("GZ:%ld\r\n", gyr_z);
+    
+    printf("$K:%ld %ld %ld\r\n", (int16_t) (gyr_x), (int16_t) (gyr_y), (int16_t)(gyr_z));
+    
     BoardGetIMUTemperature(&lTemperature);
     imu_temperature = lTemperature;
 #endif

@@ -76,8 +76,11 @@ list(APPEND ${PROJECT_NAME}_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_dxs.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_acq.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_acq_stm32l1xx_sw.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/TinyEKF/src/tiny_ekf.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_acq_stm32l1xx_hw.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../peripherals/c6dofimu9/c6dofimu9.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32_MotionGC_Library/Lib/MotionGC_CM3_wc32_ot.a"
+
 )
 
 add_library(${PROJECT_NAME} OBJECT EXCLUDE_FROM_ALL ${${PROJECT_NAME}_SOURCES})
@@ -97,6 +100,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/cmsis
     ${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32L1xx_HAL_Driver/Inc
     ${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32_MotionGC_Library/Inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/TinyEKF/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/TinyEKF/extras/c
     $<TARGET_PROPERTY:board,INTERFACE_INCLUDE_DIRECTORIES>
     $<TARGET_PROPERTY:system,INTERFACE_INCLUDE_DIRECTORIES>
     $<TARGET_PROPERTY:radio,INTERFACE_INCLUDE_DIRECTORIES>

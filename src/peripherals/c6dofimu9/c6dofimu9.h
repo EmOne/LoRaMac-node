@@ -61,6 +61,20 @@
 //   cfg.syn = MIKROBUS( mikrobus, MIKROBUS_PWM ); \
 //   cfg.int_pin = MIKROBUS( mikrobus, MIKROBUS_INT );
 /** \} */
+typedef struct Quaternion
+{
+	double w, x, y, z;
+} Quaternion;
+
+typedef struct EulerAngles
+{
+	double roll, pitch, yaw;
+} EulerAngles;
+
+typedef struct Gyroscope
+{
+	double gy, gx, gz;
+} Gyroscope;
 
 /**
  * \defgroup communication Select communication
@@ -407,6 +421,21 @@
 #define DEF_ACCEL_ST_AL_MIN		225
 #define DEF_ACCEL_ST_AL_MAX		675
 
+
+/** @defgroup Sensitivity_selection               
+  * @{
+  */
+#define IAM20680_SENSITIVITY_0_06G            0.06  /* 0.06 mg/digit*/
+#define IAM20680_SENSITIVITY_0_12G            0.12  /* 0.12 mg/digit*/
+#define IAM20680_SENSITIVITY_0_18G            0.18  /* 0.18 mg/digit*/
+#define IAM20680_SENSITIVITY_0_24G            0.24  /* 0.24 mg/digit*/
+#define IAM20680_SENSITIVITY_0_73G            0.73  /* 0.73 mg/digit*/
+
+#define IAM20680_GYRO_SENSITIVITY_250            0.008  /* 0.008 dps/digit*/
+#define IAM20680_GYRO_SENSITIVITY_500            0.004  /* 0.004 dps/digit*/
+#define IAM20680_GYRO_SENSITIVITY_1000           0.002  /* 0.002 dps/digit*/
+#define IAM20680_GYRO_SENSITIVITY_2000           0.001  /* 0.001 dps/digit*/
+
 enum inv_filter_e {
 	INV_FILTER_256HZ_NOLPF2 = 0,
 	INV_FILTER_188HZ,
@@ -524,6 +553,27 @@ typedef struct c6dofimu9_s
     int gyro_st_bias[3];
 	uint8_t is_asleep;
 	uint8_t accel_lp_mode;
+
+	Quaternion q;
+
+	union {
+		Gyroscope g;
+		EulerAngles e;
+	};
+	union {
+		Gyroscope ekf_g;
+		EulerAngles ekf_e;
+	};
+
+	union {
+		Gyroscope delta_g;
+		EulerAngles delta_e;
+	};
+
+	union {
+		Gyroscope abs_g;
+		EulerAngles abs_e;
+	};
 } c6dofimu9_t;
 
 /**
@@ -1010,6 +1060,10 @@ void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, int16_t *p_gyro_x, int16_t *p_g
 void c6dofimu9_get_temperature_data ( c6dofimu9_t *ctx, int32_t *temp );
 
 int c6dofimu9_hw_selftest ( c6dofimu9_t *ctx );
+
+
+Quaternion ToQuaternion(EulerAngles e);
+EulerAngles ToEulerAngles(Quaternion q);
 
 #ifdef __cplusplus
 }

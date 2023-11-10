@@ -36,6 +36,7 @@
 #include "rtc-board.h"
 #include "sx1272-board.h"
 #include "board.h"
+#include "delay.h"
 
 #if ( USE_TS == 1 )
 #include "touchsensing.h"
@@ -142,6 +143,10 @@ void BoardInitPeriph( void )
     	// Error_Handler();
     }
 
+    c6dofimu9_reset_default(&c6dofimu9);
+
+    c6dofimu9_hw_selftest(&c6dofimu9);
+    
     c6dofimu9_set_gyro_config_lp_mode(&c6dofimu9, C6DOFIMU9_GYRO_AVERAGE_1x);
 	c6dofimu9_set_gyro_measurement_range(&c6dofimu9,
 			C6DOFIMU9_GYRO_FULL_SCALE_250dps);
@@ -150,11 +155,11 @@ void BoardInitPeriph( void )
 	c6dofimu9_set_accel_avg_filter_mode(&c6dofimu9,
 			C6DOFIMU9_ACCEL_AVERAGE_4_SAMPLES);
     
-    c6dofimu9_hw_selftest(&c6dofimu9);
     c6dofimu9_enable_data_ready_interrupt(&c6dofimu9);
     c6dofimu9_enable_gyro_interrupt(&c6dofimu9);
     c6dofimu9_enable_accel_interrupt(&c6dofimu9);
-    c6dofimu9_enable_fifo(&c6dofimu9, 0xF8);
+    
+    // c6dofimu9_enable_fifo(&c6dofimu9, 0xF8);
 
 #endif
 
@@ -513,10 +518,13 @@ void BoardGetIMU( int16_t* gyro_x ,int16_t* gyro_y, int16_t* gyro_z, int16_t* ac
 {
     c6dofimu9_get_accel_data(&c6dofimu9, accel_x, accel_y,
                   accel_z);
-    HAL_Delay(10);
+    DelayMs(10);
     c6dofimu9_get_gyro_data(&c6dofimu9, gyro_x, gyro_y,
                   gyro_z);
-    HAL_Delay(10);
+    DelayMs(10);
+    
+    /* Gyroscope Calibration specific part */
+    // GC_Data_Handler(&msg_dat);
 }
 
 void BoardGetIMUTemperature(int32_t * temperature)
