@@ -40,6 +40,7 @@
 
 #define SEED 1
 
+
 ekf_t ekf;
 // Make a place to store the data from the file and the output of the EKF
 double SV_Pos[Nsta][Mobs];
@@ -590,7 +591,7 @@ uint8_t c6dofimu9_get_interrupt_status ( c6dofimu9_t *ctx )
     uint8_t temp;
 
     c6dofimu9_generic_read( ctx, C6DOFIMU9_REG_INT_STATUS, &temp, 1 );
-
+	ctx->irq_status = temp;
     return temp;
 }
 
@@ -709,22 +710,22 @@ void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, int16_t *p_gyro_x, int16_t *p_g
 			SV_Rho[0] = ctx->g.gx = (double) *p_gyro_x;
 			SV_Rho[1] = ctx->g.gy = (double) *p_gyro_y;
 			SV_Rho[2] = ctx->g.gz = (double) *p_gyro_z;
-//			sprintf(txt, "$E:%lf %lf %lf\r\n", flow.e.roll, flow.e.pitch, flow.e.yaw);
-//			len = strlen(txt);
-//			HAL_UART_Transmit(&huart1, (uint8_t*) txt, len, 500);
-//			CDC_Transmit_HS((uint8_t*) txt, len);
+// //			sprintf(txt, "$E:%lf %lf %lf\r\n", flow.e.roll, flow.e.pitch, flow.e.yaw);
+// //			len = strlen(txt);
+// //			HAL_UART_Transmit(&huart1, (uint8_t*) txt, len, 500);
+// //			CDC_Transmit_HS((uint8_t*) txt, len);
 
-			ekf_model(&ekf);
-//
-			ekf_step(&ekf, (double*) SV_Rho);
-//
-//			// estimate
-			for (k = 0; k < Nsta; ++k)
-				*(((double *)&ctx->ekf_g) + k) = Pos_KF[j][k] = ekf.x[k];
+// 			ekf_model(&ekf);
+// //
+// 			ekf_step(&ekf, (double*) SV_Rho);
+// //
+// //			// estimate
+// 			for (k = 0; k < Nsta; ++k)
+// 				*(((double *)&ctx->ekf_g) + k) = Pos_KF[j][k] = ekf.x[k];
 
-			*p_gyro_x = (int16_t) (ctx->ekf_g.gx);
-			*p_gyro_y = (int16_t) (ctx->ekf_g.gy);
-			*p_gyro_z = (int16_t) (ctx->ekf_g.gz);
+// 			*p_gyro_x = (int16_t) (ctx->ekf_g.gx);
+// 			*p_gyro_y = (int16_t) (ctx->ekf_g.gy);
+// 			*p_gyro_z = (int16_t) (ctx->ekf_g.gz);
 
 // 		for (k = 0; k < Mobs; ++k)
 // 			mean_Pos_KF[k] = 0;
@@ -753,8 +754,8 @@ void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, int16_t *p_gyro_x, int16_t *p_g
 // 		ctx->delta_g.gy /= SEED;
 // 		ctx->delta_g.gz /= SEED;
 
-// 		printf("$D:%ld %ld %ld\r\n", (int16_t) (ctx->delta_g.gx* 100), (int16_t) (ctx->delta_g.gy* 100),
-// 				(int16_t) (ctx->delta_g.gz* 100));
+// 		printf("$D:%ld %ld %ld\r\n", (int16_t) (ctx->delta_g.gx* DEF_ST_PRECISION), (int16_t) (ctx->delta_g.gy* DEF_ST_PRECISION),
+// 				(int16_t) (ctx->delta_g.gz* DEF_ST_PRECISION));
 
 // 		ctx->q = ToQuaternion(ctx->ekf_e);
 
@@ -770,6 +771,181 @@ void c6dofimu9_get_temperature_data ( c6dofimu9_t *ctx, int32_t *temp )
     temp_out = (data[0] << 8 | data[1]) * 10000;
     temp_out = (temp_out / TEMP_SENSITIVITY) + TEMP_OFFSET;
     *temp = (int32_t) temp_out;
+}
+
+int c6dofimu9_get_imu ( c6dofimu9_t *ctx, int *gyro_result, int *accel_result, int lp_mode )
+{
+	int result, i, j, packet_size, total_bytes;
+	uint8_t data[BYTES_PER_SENSOR * 2], d, dd;
+	int fifo_count, packet_count, ind;
+    uint8_t reset = 0;
+	packet_size = BYTES_PER_SENSOR * 2;
+
+	/* disable interrupt */
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_INT_ENABLE, &reset, 1);
+	if (result)
+		return result;
+	/* disable the sensor output to FIFO */
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_FIFO_EN, &reset, 1);
+	if (result)
+		return result;
+	/* disable fifo reading */
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_USER_CTRL, &reset, 1);
+	if (result)
+		return result;
+	/* clear FIFO */
+    d = C6DOFIMU9_BIT_FIFO_RST;
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_USER_CTRL, &d, 1);
+	if (result)
+		return result;
+	/* setup parameters */
+    d = INV_FILTER_98HZ;
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_CONFIG, &d, 1);
+	if (result)
+		return result;
+
+	/* gyro lp mode */
+	if (lp_mode == 1)
+		d = C6DOFIMU9_BIT_GYRO_CYCLE_EN;
+	else if (lp_mode == 2)
+		d = DEF_SELFTEST_SAMPLE_RATE_ACC_LP;
+	else
+		d = 0;
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_LP_MODE_CFG, &d, 1);
+	if (result)
+		return result;
+
+	/* config accel LPF register */
+	if (lp_mode == 2)
+		d = C6DOFIMU9_BIT_ACCEL_FCHOCIE_B;
+	else
+		d = DEF_ST_IAM20680_ACCEL_LPF;
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_20680_ACCEL_CONFIG2, &d, 1);
+	if (result)
+		return result;
+
+	if (lp_mode) {
+        d = DEF_SELFTEST_SAMPLE_RATE_LP;
+	} else {
+        d = DEF_SELFTEST_SAMPLE_RATE;
+	}
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_SMPLRT_DIV,
+				&d, 1);
+	if (result)
+		return result;
+
+	for (i = 0; i < THREE_AXIS; i++) {
+		gyro_result[i] = 0;
+		accel_result[i] = 0;
+	}
+
+	/* enable FIFO reading */
+	dd = C6DOFIMU9_BIT_FIFO_EN;
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_USER_CTRL, &dd, 1);
+	if (result)
+		return result;
+
+	/* accel lp mode */
+	dd = C6DOFIMU9_BIT_CLK_PLL;
+	dd &= ~C6DOFIMU9_BIT_LP_EN;
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_PWR_MGMT_1, &dd, 1);
+	if (result)
+		return result;
+	
+	dd = C6DOFIMU9_BIT_GYRO_FIFO_EN	| C6DOFIMU9_BIT_ACCEL_FIFO_EN;
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_FIFO_EN, &dd, 1);
+	
+	if (result)
+		return result;
+	
+	do {
+		c6dofimu9_get_interrupt_status(&c6dofimu9);
+		DelayMs(DEF_GYRO_WAIT_TIME);
+	} while ((c6dofimu9.irq_status & 0x01) == 0x00);
+	
+	/* disable the sensor output to FIFO */
+	reset = 0;
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_FIFO_EN, &reset, 1);
+	if (result)
+		return result;
+
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_FIFO_COUNTH,
+				data, FIFO_COUNT_BYTE);
+
+	fifo_count = data[0] << 8 | data[1];
+	// pr_debug("%s self_test fifo_count - %d\n",
+	// 	 st->hw->name, fifo_count);
+	packet_count = fifo_count / packet_size;
+	total_bytes = fifo_count;
+	i = 0;
+	while ((i < packet_count))
+	{
+		short vals[3];
+
+		result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_FIFO_R_W,
+										data, packet_size);
+		if (result)
+			return result;
+		ind = 0;
+
+		for (j = 0; j < THREE_AXIS; j++)
+		{
+			// vals[j] = (short) be16_to_cpup(
+			// 	(__be16 *)(&data[ind + 2 * j]));
+			vals[j] = data[ind + 2 * j] << 8 | data[(ind + 2 * j) + 1];
+			accel_result[j] += vals[j];
+		}
+		ind += BYTES_PER_SENSOR;
+		// pr_debug(
+		// 	"%s self_test accel data - %d %+d %+d %+d\n",
+		// 	st->hw->name, s, vals[0], vals[1], vals[2]);
+
+		for (j = 0; j < THREE_AXIS; j++)
+		{
+			// vals[j] = (short)be16_to_cpup(
+			// 	(__be16 *)(&data[ind + 2 * j]));
+			vals[j] = data[ind + 2 * j] << 8 | data[(ind + 2 * j) + 1];
+			gyro_result[j] += vals[j];
+		}
+		// pr_debug("%s self_test gyro data - %d %+d %+d %+d\n",
+		// 	st->hw->name, s, vals[0], vals[1], vals[2]);
+		i++;
+	}
+
+	// for (j = 0; j < THREE_AXIS; j++) {
+	// 	accel_result[j] = accel_result[j] / packet_count;
+	// 	accel_result[j] *= DEF_ST_PRECISION;
+	// }
+	// for (j = 0; j < THREE_AXIS; j++) {
+	// 	gyro_result[j] = gyro_result[j] / packet_count;
+	// 	gyro_result[j] *= DEF_ST_PRECISION;
+	// }
+
+// /* Update autoreload and capture compare registers value */
+// 			ctx->abs_g.gx = fabs((double) gyro_result[0]);
+// 			ctx->abs_g.gy = fabs((double) gyro_result[1]);
+// 			ctx->abs_g.gz = fabs((double) gyro_result[2]);
+// //			SV_Rho[3] = (double) flow.temp / 10.0f;
+// 			SV_Rho[0] = ctx->g.gx = (double) gyro_result[0];
+// 			SV_Rho[1] = ctx->g.gy = (double) gyro_result[1];
+// 			SV_Rho[2] = ctx->g.gz = (double) gyro_result[2];
+// //			sprintf(txt, "$E:%lf %lf %lf\r\n", flow.e.roll, flow.e.pitch, flow.e.yaw);
+// //			len = strlen(txt);
+// //			HAL_UART_Transmit(&huart1, (uint8_t*) txt, len, 500);
+// //			CDC_Transmit_HS((uint8_t*) txt, len);
+
+// 			ekf_model(&ekf);
+// //
+// 			ekf_step(&ekf, (double*) SV_Rho);
+// //
+// //			// estimate
+// 			for (k = 0; k < Nsta; ++k)
+// 				*(((double *)&ctx->ekf_g) + k) = Pos_KF[j][k] = ekf.x[k];
+
+// 			gyro_result[0] = (int16_t) (ctx->ekf_g.gx);
+// 			gyro_result[1] = (int16_t) (ctx->ekf_g.gy);
+// 			gyro_result[2] = (int16_t) (ctx->ekf_g.gz);
+
 }
 // ----------------------------------------------- PRIVATE FUNCTION DEFINITIONS
 
@@ -879,121 +1055,121 @@ static void inv_show_saved_setting(c6dofimu9_t *st)
 	// pr_debug(" REG_PWR_MGMT_2      : 0x%02X\n", saved_regs.pwr_mgmt_2);
 }
 
-static int inv_save_setting(c6dofimu9_t *st)
+static int inv_save_setting(c6dofimu9_t *ctx)
 {
 	int result;
 
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_PWR_MGMT_1,
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_PWR_MGMT_1,
 			&saved_regs.pwr_mgmt_1, 1);
 	if (result)
 		return result;
 
 	/* wake up */
     saved_regs.pwr_mgmt_1 &= ~C6DOFIMU9_BIT_SLEEP;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_1,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_PWR_MGMT_1,
 			&saved_regs.pwr_mgmt_1, 1);
 	if (result)
 		return result;
 
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_INT_ENABLE,
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_INT_ENABLE,
 			&saved_regs.int_enable, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_FIFO_EN,
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_FIFO_EN,
 			&saved_regs.fifo_en, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_USER_CTRL,
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_USER_CTRL,
 			&saved_regs.user_ctrl, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_CONFIG,
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_CONFIG,
 			&saved_regs.config, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_GYRO_CONFIG,
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_GYRO_CONFIG,
 			&saved_regs.gyro_config, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_ACCEL_CONFIG,
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_ACCEL_CONFIG,
 			&saved_regs.accel_config, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_ACCEL_CONFIG_2,
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_ACCEL_CONFIG_2,
 			&saved_regs.accel_config_2, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_SMPLRT_DIV,
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_SMPLRT_DIV,
 			&saved_regs.smplrt_div, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_LP_MODE_CFG,
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_LP_MODE_CFG,
 			&saved_regs.lp_mode, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_PWR_MGMT_2,
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_PWR_MGMT_2,
 			&saved_regs.pwr_mgmt_2, 1);
 	if (result)
 		return result;
 
-	inv_show_saved_setting(st);
+	inv_show_saved_setting(ctx);
 
 	return result;
 }
 
-static int inv_recover_setting( c6dofimu9_t *st)
+static int inv_recover_setting( c6dofimu9_t *ctx)
 {
 	int result;
 	/* Stop sensors */
     uint8_t pwr_mgmt_2 = C6DOFIMU9_BIT_PWR_ACCEL_STBY | C6DOFIMU9_BIT_PWR_GYRO_STBY;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_2,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_PWR_MGMT_2,
 			&pwr_mgmt_2, 1);
 	if (result)
 		return result;
 
 	/* Restore sensor configurations */
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_INT_ENABLE,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_INT_ENABLE,
 			&saved_regs.int_enable, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_FIFO_EN,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_FIFO_EN,
 			&saved_regs.fifo_en, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_USER_CTRL,
 			&saved_regs.user_ctrl, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_CONFIG,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_CONFIG,
 			&saved_regs.config, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_GYRO_CONFIG,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_GYRO_CONFIG,
 			&saved_regs.gyro_config, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_ACCEL_CONFIG,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_ACCEL_CONFIG,
 			&saved_regs.accel_config, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_ACCEL_CONFIG_2,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_ACCEL_CONFIG_2,
 			&saved_regs.accel_config_2, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_SMPLRT_DIV,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_SMPLRT_DIV,
 			&saved_regs.smplrt_div, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_LP_MODE_CFG,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_LP_MODE_CFG,
 			&saved_regs.lp_mode, 1);
 	if (result)
 		return result;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_1,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_PWR_MGMT_1,
 			&saved_regs.pwr_mgmt_1, 1);
 	if (result)
 		return result;
 
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_2,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_PWR_MGMT_2,
 			&saved_regs.pwr_mgmt_2, 1);
 	if (result)
 		return result;
@@ -1001,25 +1177,25 @@ static int inv_recover_setting( c6dofimu9_t *st)
 	return result;
 }
 
-static int inv_switch_engine(c6dofimu9_t *st, bool en, uint32_t mask)
+static int inv_switch_engine(c6dofimu9_t *ctx, bool en, uint32_t mask)
 {
 	uint8_t data, mgmt_1;
 	int result;
 
 	if (mask == C6DOFIMU9_BIT_PWR_GYRO_STBY) {
-		result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_PWR_MGMT_1, &mgmt_1, 1);
+		result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_PWR_MGMT_1, &mgmt_1, 1);
 		if (result)
 			return result;
 		mgmt_1 &= ~C6DOFIMU9_BIT_CLK_MASK;
 	}
 
 	if ((mask == C6DOFIMU9_BIT_PWR_GYRO_STBY) && (!en)) {
-		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_1, &mgmt_1, 1);
+		result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_PWR_MGMT_1, &mgmt_1, 1);
 		if (result)
 			return result;
 	}
 
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_PWR_MGMT_2, &data, 1);
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_PWR_MGMT_2, &data, 1);
 	if (result)
 		return result;
 	if (en)
@@ -1027,7 +1203,7 @@ static int inv_switch_engine(c6dofimu9_t *st, bool en, uint32_t mask)
 	else
 		data |= mask;
 	data |= C6DOFIMU9_BIT_FIFO_LP_EN;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_2, &data, 1);
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_PWR_MGMT_2, &data, 1);
 	if (result)
 		return result;
 
@@ -1036,7 +1212,7 @@ static int inv_switch_engine(c6dofimu9_t *st, bool en, uint32_t mask)
 		DelayMs(SENSOR_UP_TIME);
 		/* after gyro is on & stable, switch internal clock to PLL */
 		mgmt_1 |= C6DOFIMU9_BIT_CLK_PLL;
-		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_1, &mgmt_1, 1);
+		result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_PWR_MGMT_1, &mgmt_1, 1);
 		if (result)
 			return result;
 	}
@@ -1054,7 +1230,7 @@ static int inv_switch_engine(c6dofimu9_t *st, bool en, uint32_t mask)
  *  @*reg_avg: average value of normal test.
  *  @*st_avg:  average value of self test
  */
-static int inv_check_gyro_self_test(c6dofimu9_t *st,
+static int inv_check_gyro_self_test(c6dofimu9_t *ctx,
 						int *reg_avg, int *st_avg)
 {
 	uint8_t regs[3];
@@ -1063,7 +1239,7 @@ static int inv_check_gyro_self_test(c6dofimu9_t *st,
 	int st_shift_prod[3], st_shift_cust[3], i;
 
 	ret_val = 0;
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_20680_XG_ST_DATA, regs, 3);
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_20680_XG_ST_DATA, regs, 3);
 	if (result)
 		return result;
 	// pr_debug("%s self_test gyro shift_code - %02x %02x %02x\n",
@@ -1120,7 +1296,7 @@ static int inv_check_gyro_self_test(c6dofimu9_t *st,
  *  @*reg_avg: average value of normal test.
  *  @*st_avg:  average value of self test
  */
-static int inv_check_accel_self_test(c6dofimu9_t *st,
+static int inv_check_accel_self_test(c6dofimu9_t *ctx,
 						int *reg_avg, int *st_avg)
 {
 	int ret_val, result;
@@ -1129,7 +1305,7 @@ static int inv_check_accel_self_test(c6dofimu9_t *st,
 	int otp_value_zero = 0;
 
 	ret_val = 0;
-	result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_20680_XA_ST_DATA, regs, 3);
+	result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_20680_XA_ST_DATA, regs, 3);
 	if (result)
 		return result;
 	// pr_debug("%s self_test accel shift_code - %02x %02x %02x\n",
@@ -1171,7 +1347,7 @@ static int inv_check_accel_self_test(c6dofimu9_t *st,
 /*
  *  inv_do_test() - do the actual test of self testing
  */
-static int inv_do_test(c6dofimu9_t *st, int self_test_flag,
+static int inv_do_test(c6dofimu9_t *ctx, int self_test_flag,
 		int *gyro_result, int *accel_result, int lp_mode)
 {
 	int result, i, j, packet_size;
@@ -1181,25 +1357,25 @@ static int inv_do_test(c6dofimu9_t *st, int self_test_flag,
 	packet_size = BYTES_PER_SENSOR * 2;
 
 	/* disable interrupt */
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_INT_ENABLE, &reset, 1);
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_INT_ENABLE, &reset, 1);
 	if (result)
 		return result;
 	/* disable the sensor output to FIFO */
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_FIFO_EN, &reset, 1);
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_FIFO_EN, &reset, 1);
 	if (result)
 		return result;
 	/* disable fifo reading */
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL, &reset, 1);
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_USER_CTRL, &reset, 1);
 	if (result)
 		return result;
 	/* clear FIFO */
     d = C6DOFIMU9_BIT_FIFO_RST;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL, &d, 1);
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_USER_CTRL, &d, 1);
 	if (result)
 		return result;
 	/* setup parameters */
     d = INV_FILTER_98HZ;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_CONFIG, &d, 1);
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_CONFIG, &d, 1);
 	if (result)
 		return result;
 
@@ -1210,7 +1386,7 @@ static int inv_do_test(c6dofimu9_t *st, int self_test_flag,
 		d = DEF_SELFTEST_SAMPLE_RATE_ACC_LP;
 	else
 		d = 0;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_LP_MODE_CFG, &d, 1);
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_LP_MODE_CFG, &d, 1);
 	if (result)
 		return result;
 
@@ -1219,17 +1395,17 @@ static int inv_do_test(c6dofimu9_t *st, int self_test_flag,
 		d = C6DOFIMU9_BIT_ACCEL_FCHOCIE_B;
 	else
 		d = DEF_ST_IAM20680_ACCEL_LPF;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_20680_ACCEL_CONFIG2, &d, 1);
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_20680_ACCEL_CONFIG2, &d, 1);
 	if (result)
 		return result;
 
 	if (lp_mode) {
         d = DEF_SELFTEST_SAMPLE_RATE_LP;
-		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_SMPLRT_DIV,
+		result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_SMPLRT_DIV,
 				&d, 1);
 	} else {
         d = DEF_SELFTEST_SAMPLE_RATE;
-		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_SMPLRT_DIV,
+		result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_SMPLRT_DIV,
 				&d, 1);
 	}
 	if (result)
@@ -1237,14 +1413,14 @@ static int inv_do_test(c6dofimu9_t *st, int self_test_flag,
 	/* wait for the sampling rate change to stabilize */
 	DelayMs(SAMPLE_RATE_CHANGE_STABLE);
     d = self_test_flag | DEF_SELFTEST_GYRO_FS;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_GYRO_CONFIG,
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_GYRO_CONFIG,
 		&d, 1);
 	if (result)
 		return result;
 
 	d = DEF_SELFTEST_20680_ACCEL_FS;
 	d |= self_test_flag;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_ACCEL_CONFIG, &d, 1);
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_ACCEL_CONFIG, &d, 1);
 	if (result)
 		return result;
 
@@ -1253,7 +1429,7 @@ static int inv_do_test(c6dofimu9_t *st, int self_test_flag,
 
 	/* enable FIFO reading */
     d = C6DOFIMU9_BIT_FIFO_EN;
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL, &d, 1);
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_USER_CTRL, &d, 1);
 	if (result)
 		return result;
 	/* enable sensor output to FIFO */
@@ -1265,17 +1441,17 @@ static int inv_do_test(c6dofimu9_t *st, int self_test_flag,
 	s = 0;
 	while (s < 200 /*st->self_test.samples*/) {
 		/* Stop FIFO */
-		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL, &reset, 1);
+		result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_USER_CTRL, &reset, 1);
 		if (result)
 			return result;
 		/* clear FIFO */
         dd = C6DOFIMU9_BIT_FIFO_RST;
-		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL, &dd, 1);
+		result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_USER_CTRL, &dd, 1);
 		if (result)
 			return result;
 		/* enable FIFO reading */
         dd = C6DOFIMU9_BIT_FIFO_EN;
-		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_USER_CTRL, &dd, 1);
+		result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_USER_CTRL, &dd, 1);
 		if (result)
 			return result;
 
@@ -1285,11 +1461,13 @@ static int inv_do_test(c6dofimu9_t *st, int self_test_flag,
 			dd |= C6DOFIMU9_BIT_LP_EN;
 		else
 			dd &= ~C6DOFIMU9_BIT_LP_EN;
-		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_1, &dd, 1);
+		result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_PWR_MGMT_1, &dd, 1);
 		if (result)
 			return result;
+		
+		dd = C6DOFIMU9_BIT_GYRO_FIFO_EN	| C6DOFIMU9_BIT_ACCEL_FIFO_EN;
+		result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_FIFO_EN, &dd, 1);
 
-		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_FIFO_EN, &d, 1);
 		if (result)
 			return result;
 		if (lp_mode)
@@ -1297,11 +1475,11 @@ static int inv_do_test(c6dofimu9_t *st, int self_test_flag,
 		else
 			DelayMs(DEF_GYRO_WAIT_TIME);
 
-		result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_FIFO_EN, &reset, 1);
+		result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_FIFO_EN, &reset, 1);
 		if (result)
 			return result;
 
-		result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_FIFO_COUNTH,
+		result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_FIFO_COUNTH,
 					data, FIFO_COUNT_BYTE);
 		if (result)
 			return result;
@@ -1314,7 +1492,7 @@ static int inv_do_test(c6dofimu9_t *st, int self_test_flag,
 		while ((i < packet_count) && (s < 200)) {
 			short vals[3];
 
-			result = c6dofimu9_generic_read(st, C6DOFIMU9_REG_FIFO_R_W,
+			result = c6dofimu9_generic_read(ctx, C6DOFIMU9_REG_FIFO_R_W,
 				 data, packet_size);
 			if (result)
 				return result;
@@ -1357,7 +1535,7 @@ static int inv_do_test(c6dofimu9_t *st, int self_test_flag,
 	return 0;
 }
 
-int inv_set_accel_config2(c6dofimu9_t *st, bool cycle_mode)
+int inv_set_accel_config2(c6dofimu9_t *ctx, bool cycle_mode)
 {
 	int cycle_freq[] = {275, 192, 111, 59};
 	int cont_freq[] = {219, 219, 99, 45, 22, 11, 6};
@@ -1377,11 +1555,11 @@ int inv_set_accel_config2(c6dofimu9_t *st, bool cycle_mode)
 			i--;
 		}
         d = v | (i << 4) | 7;
-		r = c6dofimu9_generic_write(st, C6DOFIMU9_REG_ACCEL_CONFIG_2, 
+		r = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_ACCEL_CONFIG_2, 
 								&d, 1);
 		if (r)
 			return r;
-		st->accel_lp_mode = 1;
+		ctx->accel_lp_mode = 1;
 	} else {
 		rate = (BASE_SAMPLE_RATE >> 1);
 		for (i = 1; i < NELEM(cont_freq); i++) {
@@ -1391,55 +1569,55 @@ int inv_set_accel_config2(c6dofimu9_t *st, bool cycle_mode)
 		if (i > 6)
 			i = 6;
         d = v | i;
-		r = c6dofimu9_generic_write(st, C6DOFIMU9_REG_ACCEL_CONFIG_2, &d, 1);
+		r = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_ACCEL_CONFIG_2, &d, 1);
 		if (r)
 			return r;
-		st->accel_lp_mode = 0;
+		ctx->accel_lp_mode = 0;
 	}
 
 	return 0;
 }
 
-static int inv_lp_en_off_mode(c6dofimu9_t *st, bool on)
+static int inv_lp_en_off_mode(c6dofimu9_t *ctx, bool on)
 {
     int r = 0;
     uint8_t d;
 
-	if (!st->is_asleep)
+	if (!ctx->is_asleep)
 		return 0;
 
 // #if !defined(CONFIG_INV_MPU_IIO_ICM42600) && !defined(CONFIG_INV_MPU_IIO_ICM43600) && !defined(CONFIG_INV_MPU_IIO_ICM45600)
     d = C6DOFIMU9_BIT_CLK_PLL;
-	r = c6dofimu9_generic_write(st, C6DOFIMU9_REG_PWR_MGMT_1, &d, 1);
+	r = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_PWR_MGMT_1, &d, 1);
 	// usleep_range(REG_UP_TIME_USEC, REG_UP_TIME_USEC + 1);
 // #endif
-	st->is_asleep = 0;
+	ctx->is_asleep = 0;
 // #if defined(CONFIG_INV_MPU_IIO_ICM20602) || \
 // 	defined(CONFIG_INV_MPU_IIO_ICM20690) || \
 // 	defined(CONFIG_INV_MPU_IIO_IAM20680) || \
 // 	defined(CONFIG_INV_MPU_IIO_ICM20608D)
-	inv_set_accel_config2(st, false);
+	inv_set_accel_config2(ctx, false);
 // #endif
 	return r;
 }
 
-static int inv_power_up_self_test(c6dofimu9_t *st)
+static int inv_power_up_self_test(c6dofimu9_t *ctx)
 {
 	int result;
     uint8_t d = 0;
-	result = inv_lp_en_off_mode(st, true);
+	result = inv_lp_en_off_mode(ctx, true);
 
 	/* make sure no interrupts */
-	result = c6dofimu9_generic_write(st, C6DOFIMU9_REG_INT_ENABLE, &d, 1);
+	result = c6dofimu9_generic_write(ctx, C6DOFIMU9_REG_INT_ENABLE, &d, 1);
 	if (result)
 		return result;
 
 	if (result)
 		return result;
-	result = inv_switch_engine(st, true, C6DOFIMU9_BIT_PWR_ACCEL_STBY);
+	result = inv_switch_engine(ctx, true, C6DOFIMU9_BIT_PWR_ACCEL_STBY);
 	if (result)
 		return result;
-	result = inv_switch_engine(st, true, C6DOFIMU9_BIT_PWR_GYRO_STBY);
+	result = inv_switch_engine(ctx, true, C6DOFIMU9_BIT_PWR_GYRO_STBY);
 	if (result)
 		return result;
 
@@ -1511,7 +1689,7 @@ int result;
 	/* lp gyro mode */
 	test_times = DEF_ST_TRY_TIMES;
 	while (test_times > 0) {
-		result = inv_do_test(st, 0, gyro_bias_regular_lp,
+		result = inv_do_test(ctx, 0, gyro_bias_regular_lp,
 			dummy_bias_regular, 1);
 		if (result == -1)
 			test_times--;
@@ -1527,7 +1705,7 @@ int result;
 	/* lp accel mode */
 	test_times = DEF_ST_TRY_TIMES;
 	while (test_times > 0) {
-		result = inv_do_test(st, 0, dummy_bias_regular,
+		result = inv_do_test(ctx, 0, dummy_bias_regular,
 			accel_bias_regular_lp, 2);
 		if (result == -1)
 			test_times--;
@@ -1734,5 +1912,204 @@ EulerAngles ToEulerAngles(Quaternion q)
 
 	return angles;
 }
+
+// static int inv_process_20680_data(c6dofimu9_t *st)
+// {
+	
+// 	int total_bytes, tmp, res, fifo_count, pk_size, i;
+// 	uint8_t *dptr, *d;
+// 	uint8_t data[14];
+// 	bool done_flag;
+// 	uint8_t v;
+// #ifdef SENSOR_DATA_FROM_REGISTERS
+// 	u8 reg;
+// 	int len;
+// #endif
+
+// 	if (ctx->gesture_only_on && (!st->batch.timeout)) {
+// 		res = inv_plat_read(ctx, REG_INT_STATUS, 1, data);
+// 		if (res)
+// 			return res;
+// 		pr_debug("ges cnt=%d, statu=%x\n",
+// 						st->gesture_int_count, data[0]);
+// 		if (data[0] & (BIT_WOM_ALL_INT_EN)) {
+// 			if (!st->gesture_int_count) {
+// 				inv_switch_power_in_lp(ctx, true);
+// 				res = inv_plat_single_write(ctx, REG_INT_ENABLE,
+// 					BIT_WOM_ALL_INT_EN | BIT_DATA_RDY_EN);
+// 				if (res)
+// 					return res;
+// 				v = 0;
+// 				// if (ctx->chip_config.gyro_enable)
+// 					v |= BITS_GYRO_FIFO_EN;
+
+// 				// if (ctx->chip_config.accel_enable)
+// 					v |= BIT_ACCEL_FIFO_EN;
+// 				res = inv_plat_single_write(ctx, REG_FIFO_EN, v);
+// 				if (res)
+// 					return res;
+// 				/* First time wake up from WOM.
+// 				 * We don't need data in the FIFO
+// 				 */
+// 				res = inv_reset_fifo(ctx, true);
+// 				if (res)
+// 					return res;
+// 				res = inv_switch_power_in_lp(ctx, false);
+// 				st->gesture_int_count = WOM_DELAY_THRESHOLD;
+
+// 				return res;
+// 			}
+// 			st->gesture_int_count = WOM_DELAY_THRESHOLD;
+// 		} else {
+// 			if (!st->gesture_int_count) {
+// 				inv_switch_power_in_lp(ctx, true);
+// 				res = inv_plat_single_write(ctx, REG_FIFO_EN, 0);
+// 				res = inv_plat_single_write(ctx, REG_INT_ENABLE,
+// 					BIT_WOM_ALL_INT_EN);
+// 				inv_switch_power_in_lp(ctx, false);
+
+// 				return res;
+// 			}
+// 			st->gesture_int_count--;
+// 		}
+// 	}
+
+// 	fifo_count = inv_get_last_run_time_non_dmp_record_mode(ctx);
+// 	pr_debug("fifc= %d\n", fifo_count);
+// 	if (!fifo_count) {
+// 		pr_debug("REG_FIFO_COUNT_H size is 0\n");
+// 		return 0;
+// 	}
+// 	pk_size = st->batch.pk_size;
+// 	if (!pk_size)
+// 		return -EINVAL;
+
+// 	if (fifo_count >= (HARDWARE_FIFO_SIZE / st->batch.pk_size)) {
+// 		pr_warn("fifo overflow pkt count=%d pkt sz=%d\n",
+// 				fifo_count, st->batch.pk_size);
+// 		return -EOVERFLOW;
+// 	}
+
+// 	fifo_count *= st->batch.pk_size;
+// 	st->fifo_count = fifo_count;
+// 	d = st->fifo_data_store;
+// 	dptr = d;
+// 	total_bytes = fifo_count;
+
+// #ifdef SENSOR_DATA_FROM_REGISTERS
+// 	len = 0;
+// 	if (ctx->sensor[SENSOR_GYRO].on) {
+// 		reg = REG_RAW_GYRO;
+// 		len += BYTES_PER_SENSOR;
+// 		if (ctx->sensor[SENSOR_ACCEL].on && !st->sensor[SENSOR_TEMP].on)
+// 			len += BYTES_FOR_TEMP;
+// 	}
+// 	if (ctx->sensor[SENSOR_TEMP].on) {
+// 		reg = REG_RAW_TEMP;
+// 		len += BYTES_FOR_TEMP;
+// 	}
+// 	if (ctx->sensor[SENSOR_ACCEL].on) {
+// 		reg = REG_RAW_ACCEL;
+// 		len += BYTES_PER_SENSOR;
+// 	}
+
+// 	if (len == 0) {
+// 		pr_debug("No sensor is enabled\n");
+// 		return 0;
+// 	}
+
+// 	/* read data registers */
+// 	res = inv_plat_read(ctx, reg, len, data);
+// 	if (res < 0) {
+// 		pr_err("read data registers is failed\n");
+// 		return res;
+// 	}
+
+// 	/* copy sensor data to buffer as FIFO data format */
+// 	tmp = 0;
+// 	if (ctx->sensor[SENSOR_ACCEL].on) {
+// 		for (i = 0; i < BYTES_PER_SENSOR; i++)
+// 			dptr[i] = data[tmp + i];
+// 		dptr += BYTES_PER_SENSOR;
+// 		tmp += BYTES_PER_SENSOR;
+// 	}
+
+// 	if (ctx->sensor[SENSOR_TEMP].on) {
+// 		for (i = 0; i < BYTES_FOR_TEMP; i++)
+// 			dptr[i] = data[tmp + i];
+// 		dptr += BYTES_FOR_TEMP;
+// 		tmp += BYTES_FOR_TEMP;
+// 	}
+
+// 	if (ctx->sensor[SENSOR_GYRO].on) {
+// 		if (ctx->sensor[SENSOR_ACCEL].on && !st->sensor[SENSOR_TEMP].on)
+// 			tmp += BYTES_FOR_TEMP;
+// 		for (i = 0; i < BYTES_PER_SENSOR; i++)
+// 			dptr[i] = data[tmp + i];
+// 	}
+// #else
+// 	while (total_bytes > 0) {
+// 		if (total_bytes < pk_size * MAX_FIFO_PACKET_READ)
+// 			tmp = total_bytes;
+// 		else
+// 			tmp = pk_size * MAX_FIFO_PACKET_READ;
+// 		res = inv_plat_read(ctx, REG_FIFO_R_W, tmp, dptr);
+// 		if (res < 0) {
+// 			pr_err("read REG_FIFO_R_W is failed\n");
+// 			return res;
+// 		}
+// 		pr_debug("inside: %x, %x, %x, %x, %x, %x, %x, %x\n",
+// 				dptr[0], dptr[1], dptr[2], dptr[3],
+// 				dptr[4], dptr[5], dptr[6], dptr[7]);
+// 		pr_debug("insid2: %x, %x, %x, %x, %x, %x, %x, %x\n",
+// 				dptr[8], dptr[9], dptr[10], dptr[11],
+// 				dptr[12], dptr[13], dptr[14], dptr[15]);
+
+// 		dptr += tmp;
+// 		total_bytes -= tmp;
+// 	}
+// #endif /* SENSOR_DATA_FROM_REGISTERS */
+// 	dptr = d;
+// 	pr_debug("dd: %x, %x, %x, %x, %x, %x, %x, %x\n",
+// 			d[0], d[1], d[2], d[3],
+// 			d[4], d[5], d[6], d[7]);
+// 	pr_debug("dd2: %x, %x, %x, %x, %x, %x, %x, %x\n",
+// 			d[8], d[9], d[10], d[11],
+// 			d[12], d[13], d[14], d[15]);
+// 	total_bytes = fifo_count;
+
+// 	for (i = 0; i < SENSOR_NUM_MAX; i++) {
+// 		if (ctx->sensor[i].on)
+// 			st->sensor[i].count =  total_bytes / pk_size;
+// 	}
+// 	st->header_count = 0;
+// 	for (i = 0; i < SENSOR_NUM_MAX; i++) {
+// 		if (ctx->sensor[i].on)
+// 			st->header_count = max(ctx->header_count,
+// 							st->sensor[i].count);
+// 	}
+
+// 	st->ts_algo.calib_counter++;
+// 	inv_bound_timestamp(ctx);
+
+// 	dptr = d;
+// 	done_flag = false;
+
+// 	while (!done_flag) {
+// 		pr_debug("total%d, pk=%d\n", total_bytes, pk_size);
+// 		if (total_bytes >= pk_size) {
+// 			res = inv_push_20680_data(indio_dev, dptr);
+// 			if (res)
+// 				return res;
+// 			total_bytes -= pk_size;
+// 			dptr += pk_size;
+// 		} else {
+// 			done_flag = true;
+// 		}
+// 	}
+
+// 	return 0;
+// }
+
 // ------------------------------------------------------------------------- END
 

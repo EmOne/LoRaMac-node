@@ -154,12 +154,13 @@ void BoardInitPeriph( void )
 			C6DOFIMU9_ACCEL_FULL_SCALE_2g);
 	c6dofimu9_set_accel_avg_filter_mode(&c6dofimu9,
 			C6DOFIMU9_ACCEL_AVERAGE_4_SAMPLES);
-    
-    c6dofimu9_enable_data_ready_interrupt(&c6dofimu9);
+        
+    // c6dofimu9_get_interrupt_status(&c6dofimu9);
+    c6dofimu9_enable_accel_wake_on_motion(&c6dofimu9);
+    // c6dofimu9_enable_accel_interrupt(&c6dofimu9);
     c6dofimu9_enable_gyro_interrupt(&c6dofimu9);
-    c6dofimu9_enable_accel_interrupt(&c6dofimu9);
-    
-    // c6dofimu9_enable_fifo(&c6dofimu9, 0xF8);
+    c6dofimu9_enable_data_ready_interrupt(&c6dofimu9);
+    // c6dofimu9_enable_fifo(&c6dofimu9, C6DOFIMU9_BIT_ACCEL_FIFO_EN | C6DOFIMU9_BIT_GYRO_FIFO_EN);
 
 #endif
 
@@ -516,15 +517,34 @@ int BoardGetCapSenseStatus( uint8_t* cap )
 #if (USE_IMU == 1)
 void BoardGetIMU( int16_t* gyro_x ,int16_t* gyro_y, int16_t* gyro_z, int16_t* accel_x ,int16_t* accel_y, int16_t* accel_z)
 {
-    c6dofimu9_get_accel_data(&c6dofimu9, accel_x, accel_y,
-                  accel_z);
+    int16_t gyro_result[3];
+    int16_t accel_result[3];
+
+#if 1 //defined(SENSOR_DATA_FROM_REGISTERS)
+    do {
+		c6dofimu9_get_interrupt_status(&c6dofimu9);
+		DelayMs(DEF_GYRO_WAIT_TIME);
+	} while ((c6dofimu9.irq_status & 0x01) == 0x00);
+
+    c6dofimu9_get_accel_data(&c6dofimu9, &accel_result[0], &accel_result[1],
+                             &accel_result[2]);
     DelayMs(10);
-    c6dofimu9_get_gyro_data(&c6dofimu9, gyro_x, gyro_y,
-                  gyro_z);
+    c6dofimu9_get_gyro_data(&c6dofimu9, &gyro_result[0], &gyro_result[1], &gyro_result[2]);
     DelayMs(10);
-    
+#else
+       
+    c6dofimu9_get_imu ( &c6dofimu9, &gyro_result, &accel_result, false );
+
+#endif
     /* Gyroscope Calibration specific part */
     // GC_Data_Handler(&msg_dat);
+
+    *gyro_x = gyro_result[0];
+    *gyro_y = gyro_result[1];
+    *gyro_z = gyro_result[2];
+    *accel_x = accel_result[0];
+    *accel_y = accel_result[1];
+    *accel_z = accel_result[2];
 }
 
 void BoardGetIMUTemperature(int32_t * temperature)

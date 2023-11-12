@@ -50,7 +50,8 @@
  * \defgroup map_mikrobus MikroBUS
  * \{
  */
-
+#define SENSOR_DATA_FROM_REGISTERS
+#define ENABLE_GYRO_HW_SELFTEST
 ////#define C6DOFIMU9_MAP_MIKROBUS( cfg, mikrobus ) \
 //   cfg.scl   = MIKROBUS( mikrobus, MIKROBUS_SCL ); \
 //   cfg.sda   = MIKROBUS( mikrobus, MIKROBUS_SDA ); \
@@ -151,7 +152,7 @@ typedef struct Gyroscope
 #define C6DOFIMU9_REG_ACCEL_WOM_Z_THR	0x22
 
 #define C6DOFIMU9_REG_FIFO_EN                                       0x23
-#define C6DOFIMU9_BITS_GYRO_FIFO_EN	0x70
+#define C6DOFIMU9_BIT_GYRO_FIFO_EN	0x70
 #define C6DOFIMU9_BIT_ACCEL_FIFO_EN	0x08
 
 #define C6DOFIMU9_REG_FSYNC_INT                                     0x36
@@ -551,8 +552,11 @@ typedef struct c6dofimu9_s
     
     int accel_st_bias[3];
     int gyro_st_bias[3];
+
 	uint8_t is_asleep;
 	uint8_t accel_lp_mode;
+
+	uint8_t irq_status;
 
 	Quaternion q;
 
@@ -1061,6 +1065,7 @@ void c6dofimu9_get_temperature_data ( c6dofimu9_t *ctx, int32_t *temp );
 
 int c6dofimu9_hw_selftest ( c6dofimu9_t *ctx );
 
+int c6dofimu9_get_imu ( c6dofimu9_t *ctx, int *gyro_result, int *accel_result, int lp_mode );
 
 Quaternion ToQuaternion(EulerAngles e);
 EulerAngles ToEulerAngles(Quaternion q);
