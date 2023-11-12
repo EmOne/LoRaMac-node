@@ -77,6 +77,11 @@ typedef struct Gyroscope
 	double gy, gx, gz;
 } Gyroscope;
 
+typedef struct Accelator
+{
+	double ay, ax, az;
+} Accelator;
+
 /**
  * \defgroup communication Select communication
  * \{
@@ -560,6 +565,7 @@ typedef struct c6dofimu9_s
 
 	Quaternion q;
 
+	Accelator a;
 	union {
 		Gyroscope g;
 		EulerAngles e;

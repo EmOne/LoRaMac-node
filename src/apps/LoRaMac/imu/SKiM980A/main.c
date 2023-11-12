@@ -37,6 +37,8 @@
 #include "CayenneLpp.h"
 #include "LmHandlerMsgDisplay.h"
 
+#include "math.h"
+
 #if ( USE_TS == 1 )
 #include "tsl.h"
 #endif
@@ -262,7 +264,7 @@ extern Uart_t Uart1;
 int16_t acc_x = 0, acc_y = 0, acc_z = 0;
 int16_t gyr_x = 0, gyr_y = 0, gyr_z = 0;
 int32_t imu_temperature;
-#define SAMPLING_RATE 10 //50Hz
+#define SAMPLING_RATE 10 //100Hz
 #endif
 
 /*!
@@ -611,6 +613,7 @@ static void OnTxTimerEvent( void* context )
     TimerStart( &TxTimer );
 }
 
+#define GYRO_ANGLE(x) (x * 1000 / SAMPLING_RATE) 
 /*!
  * Function executed on Led 4 Timeout event
  */
@@ -631,9 +634,12 @@ static void OnLed4TimerEvent( void* context )
     acc_x = lacc_x ;
     acc_y = lacc_y ;
     acc_z = lacc_z ;
-    gyr_x = lgyr_x ;
-    gyr_y = lgyr_y ;
-    gyr_z = lgyr_z ;
+    gyr_x += lgyr_x * 10 ; 
+    gyr_y += lgyr_y * 10 ;
+    gyr_z += lgyr_z * 10 ;
+
+//     AngleRoll=atan(AccY/sqrt(AccX*AccX+AccZ*AccZ))*1/(3.142/180);
+//   AnglePitch=-atan(AccX/sqrt(AccY*AccY+AccZ*AccZ))*1/(3.142/180);
 
     printf("AX:%ld ", acc_x);
     printf("AY:%ld ", acc_y);

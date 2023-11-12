@@ -37,10 +37,11 @@
 #include "tinyekf_config.h"
 #include "tiny_ekf.h"
 #include "inttypes.h"
+#include "motion_gc_manager.h"
 
 #define SEED 1
 
-
+static MGC_knobs_t Knobs;
 ekf_t ekf;
 // Make a place to store the data from the file and the output of the EKF
 double SV_Pos[Nsta][Mobs];
@@ -101,6 +102,49 @@ static void c6dofimu9_spi_read ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_bu
  * \brief INT PIN IRQ callback
  */
 static void c6dofimu9_irq_handler( void* context );
+
+
+/**
+  * @brief  Initialize DWT register for counting clock cycles purpose
+  * @param  None
+  * @retval None
+  */
+static void DWT_Init(void)
+{
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; /* Disable counter */
+}
+
+/**
+  * @brief  Start counting clock cycles
+  * @param  None
+  * @retval None
+  */
+static void DWT_Start(void)
+{
+  DWT->CYCCNT = 0; /* Clear count of clock cycles */
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk; /* Enable counter */
+}
+
+/**
+  * @brief  Stop counting clock cycles and calculate elapsed time in [us]
+  * @param  None
+  * @retval Elapsed time in [us]
+  */
+static uint32_t DWT_Stop(void)
+{
+  volatile uint32_t cycles_count = 0U;
+  uint32_t system_core_clock_mhz = 0U;
+
+  DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; /* Disable counter */
+  cycles_count = DWT->CYCCNT; /* Read count of clock cycles */
+
+  /* Calculate elapsed time in [us] */
+  system_core_clock_mhz = SystemCoreClock / 1000000U;
+  return cycles_count / system_core_clock_mhz;
+}
+
+
 
 // ------------------------------------------------ PUBLIC FUNCTION DEFINITIONS
 
@@ -315,6 +359,19 @@ C6DOFIMU9_RETVAL c6dofimu9_init ( c6dofimu9_t *ctx, c6dofimu9_cfg_t *cfg )
 
 		ekf_init(&ekf, Nsta, Mobs);
 		ekf_local_init(&ekf);
+		/* Get current settings and set desired ones */
+		MotionGC_GetKnobs(&Knobs);
+		Knobs.AccThr = 0.004f;
+		Knobs.GyroThr = 0.1f;
+		Knobs.MaxGyro = 250;
+		Knobs.MaxAcc = 6;
+		(void)MotionGC_SetKnobs(&Knobs);
+
+		/* Set sample frequency */
+  
+		MotionGC_manager_set_frequency(1000.0f / 10);
+
+		DWT_Init();
 
         IMUInitialized = 1;
     }
@@ -694,38 +751,68 @@ void c6dofimu9_get_accel_data ( c6dofimu9_t *ctx, int16_t *p_accel_x, int16_t *p
     *p_accel_x = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_ACCEL_XOUT_H, C6DOFIMU9_REG_ACCEL_XOUT_L ) * IAM20680_SENSITIVITY_0_12G) - ctx->accel_st_bias[0];
     *p_accel_y = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_ACCEL_YOUT_H, C6DOFIMU9_REG_ACCEL_YOUT_L ) * IAM20680_SENSITIVITY_0_12G) - ctx->accel_st_bias[1];
     *p_accel_z = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_ACCEL_ZOUT_H, C6DOFIMU9_REG_ACCEL_ZOUT_L ) * IAM20680_SENSITIVITY_0_12G) - ctx->accel_st_bias[2];
+
+	ctx->a.ax = (double) *p_accel_x;
+	ctx->a.ay = (double) *p_accel_y;
+	ctx->a.az = (double) *p_accel_z;
 }
 
 void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, int16_t *p_gyro_x, int16_t *p_gyro_y, int16_t *p_gyro_z )
 {
-    *p_gyro_x = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_XOUT_H, C6DOFIMU9_REG_GYRO_XOUT_L ) * IAM20680_GYRO_SENSITIVITY_250) - ctx->gyro_st_bias[0];
-    *p_gyro_y = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_YOUT_H, C6DOFIMU9_REG_GYRO_YOUT_L ) * IAM20680_GYRO_SENSITIVITY_250) - ctx->gyro_st_bias[1];
-    *p_gyro_z = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_ZOUT_H, C6DOFIMU9_REG_GYRO_ZOUT_L ) * IAM20680_GYRO_SENSITIVITY_250) - ctx->gyro_st_bias[2];
+    *p_gyro_x = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_XOUT_H, C6DOFIMU9_REG_GYRO_XOUT_L ) * IAM20680_GYRO_SENSITIVITY_250) ;
+    *p_gyro_y = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_YOUT_H, C6DOFIMU9_REG_GYRO_YOUT_L ) * IAM20680_GYRO_SENSITIVITY_250) ;
+    *p_gyro_z = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_ZOUT_H, C6DOFIMU9_REG_GYRO_ZOUT_L ) * IAM20680_GYRO_SENSITIVITY_250) ;
 
-	/* Update autoreload and capture compare registers value */
-			ctx->abs_g.gx = fabs((double) *p_gyro_x);
-			ctx->abs_g.gy = fabs((double) *p_gyro_y);
-			ctx->abs_g.gz = fabs((double) *p_gyro_z);
-//			SV_Rho[3] = (double) flow.temp / 10.0f;
-			SV_Rho[0] = ctx->g.gx = (double) *p_gyro_x;
-			SV_Rho[1] = ctx->g.gy = (double) *p_gyro_y;
-			SV_Rho[2] = ctx->g.gz = (double) *p_gyro_z;
+	ctx->g.gx = (double) *p_gyro_x;
+	ctx->g.gy = (double) *p_gyro_y;
+	ctx->g.gz = (double) *p_gyro_z;
+
+#if 1
+  	MGC_input_t data_in;
+  	MGC_output_t data_out;
+	uint32_t elapsed_time_us = 0U;
+  	int bias_update = 0;
+  /* Convert acceleration [g] */
+      data_in.Acc[0] = (float)ctx->a.ax;
+      data_in.Acc[1] = (float)ctx->a.ay;
+      data_in.Acc[2] = (float)ctx->a.az;
+
+      /* Convert angular velocity [dps] */
+      data_in.Gyro[0] = (float)ctx->g.gx;
+      data_in.Gyro[1] = (float)ctx->g.gy;
+      data_in.Gyro[2] = (float)ctx->g.gz;
+
+	  DWT_Start();
+
+      MotionGC_manager_update(&data_in, &data_out, &bias_update);
+
+	  MotionGC_manager_compensate(&ctx->g, &ctx->ekf_g);
+
+	  SV_Rho[0] = *p_gyro_x = (int16_t)(ctx->ekf_g.gx);
+	  SV_Rho[1] = *p_gyro_y = (int16_t)(ctx->ekf_g.gy);
+	  SV_Rho[2] = *p_gyro_z = (int16_t)(ctx->ekf_g.gz);
+	  //			SV_Rho[3] = (double) flow.temp / 10.0f;
+	  /* Update autoreload and capture compare registers value */
+	  ctx->abs_g.gx = fabs((double)*p_gyro_x);
+	  ctx->abs_g.gy = fabs((double)*p_gyro_y);
+	  ctx->abs_g.gz = fabs((double)*p_gyro_z);
+	  			
 // //			sprintf(txt, "$E:%lf %lf %lf\r\n", flow.e.roll, flow.e.pitch, flow.e.yaw);
 // //			len = strlen(txt);
 // //			HAL_UART_Transmit(&huart1, (uint8_t*) txt, len, 500);
 // //			CDC_Transmit_HS((uint8_t*) txt, len);
 
-// 			ekf_model(&ekf);
-// //
-// 			ekf_step(&ekf, (double*) SV_Rho);
+			ekf_model(&ekf);
+//
+			ekf_step(&ekf, (double*) SV_Rho);
 // //
 // //			// estimate
-// 			for (k = 0; k < Nsta; ++k)
-// 				*(((double *)&ctx->ekf_g) + k) = Pos_KF[j][k] = ekf.x[k];
+			for (k = 0; k < Nsta; ++k)
+				*(((double *)&ctx->ekf_g) + k) = Pos_KF[j][k] = ekf.x[k];
 
-// 			*p_gyro_x = (int16_t) (ctx->ekf_g.gx);
-// 			*p_gyro_y = (int16_t) (ctx->ekf_g.gy);
-// 			*p_gyro_z = (int16_t) (ctx->ekf_g.gz);
+			*p_gyro_x = (int16_t) (ctx->ekf_g.gx);
+			*p_gyro_y = (int16_t) (ctx->ekf_g.gy);
+			*p_gyro_z = (int16_t) (ctx->ekf_g.gz);
 
 // 		for (k = 0; k < Mobs; ++k)
 // 			mean_Pos_KF[k] = 0;
@@ -761,6 +848,7 @@ void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, int16_t *p_gyro_x, int16_t *p_g
 
 // 		printf("$Q:%ld %ld %ld %ld\r\n", (int32_t) (ctx->q.x * 1000), (int32_t) (ctx->q.y * 1000),
 // 				(int32_t) (ctx->q.z * 1000), (int32_t) (ctx->q.w * 1000));
+#endif
 }
 
 void c6dofimu9_get_temperature_data ( c6dofimu9_t *ctx, int32_t *temp )

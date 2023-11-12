@@ -38,6 +38,7 @@ list(APPEND ${PROJECT_NAME}_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/touchsensing.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/tsl_user.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/uart-board.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/motion_gc_manager.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/utilities.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/cmsis/arm-gcc/startup_stm32l151xba.s"
     "${CMAKE_CURRENT_SOURCE_DIR}/cmsis/system_stm32l1xx.c"
@@ -79,8 +80,6 @@ list(APPEND ${PROJECT_NAME}_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/TinyEKF/src/tiny_ekf.c"
     # "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STMTouch_Driver/src/tsl_acq_stm32l1xx_hw.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../peripherals/c6dofimu9/c6dofimu9.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../mcu/stm32/STM32_MotionGC_Library/Lib/MotionGC_CM3_wc32_ot.a"
-
 )
 
 add_library(${PROJECT_NAME} OBJECT EXCLUDE_FROM_ALL ${${PROJECT_NAME}_SOURCES})
@@ -110,3 +109,5 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY C_STANDARD 11)
+
+

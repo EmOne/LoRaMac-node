@@ -29,6 +29,7 @@ extern "C"
 
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
+#include <fastmath.h>
 
 /** @addtogroup MIDDLEWARES
   * @{

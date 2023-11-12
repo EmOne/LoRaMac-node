@@ -172,6 +172,7 @@ target_include_directories(${PROJECT_NAME}-${SUB_PROJECT} PUBLIC
 
 set_property(TARGET ${PROJECT_NAME}-${SUB_PROJECT} PROPERTY C_STANDARD 11)
 
+target_link_libraries(${PROJECT_NAME}-${SUB_PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/../../boards/mcu/stm32/STM32_MotionGC_Library/Lib/MotionGC_CM3_wc32_ot.a)
 target_link_libraries(${PROJECT_NAME}-${SUB_PROJECT} m)
 
 #---------------------------------------------------------------------------------------
