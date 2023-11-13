@@ -43,6 +43,7 @@
 #endif /* SENSOR */
 
 #if ( USE_IMU == 1 )
+#include "math.h"
 // #if defined ( USE_C6DOFIMU9 )
 #include "c6dofimu9.h"
 // #elif defined ( USE_C6DOFIMU17 )
@@ -55,6 +56,7 @@
 
 Gpio_t imu_sync;
 Gpio_t imu_interupt;
+Gpio_t imu_chipselect;
 c6dofimu9_t c6dofimu9;
 c6dofimu9_cfg_t cfg;
 
@@ -140,7 +142,7 @@ void BoardInitPeriph( void )
 
     if( c6dofimu9_get_device_id(&c6dofimu9) != C6DOFIMU9_DEVICE_ID)
     {
-    	// Error_Handler();
+    	return;
     }
 
     c6dofimu9_reset_default(&c6dofimu9);
@@ -151,7 +153,7 @@ void BoardInitPeriph( void )
 	c6dofimu9_set_gyro_measurement_range(&c6dofimu9,
 			C6DOFIMU9_GYRO_FULL_SCALE_250dps);
 	c6dofimu9_set_accel_measurement_range(&c6dofimu9,
-			C6DOFIMU9_ACCEL_FULL_SCALE_2g);
+			C6DOFIMU9_ACCEL_FULL_SCALE_4g);
 	c6dofimu9_set_accel_avg_filter_mode(&c6dofimu9,
 			C6DOFIMU9_ACCEL_AVERAGE_4_SAMPLES);
         
@@ -515,16 +517,42 @@ int BoardGetCapSenseStatus( uint8_t* cap )
 #endif
 
 #if (USE_IMU == 1)
-void BoardGetIMU( int16_t* gyro_x ,int16_t* gyro_y, int16_t* gyro_z, int16_t* accel_x ,int16_t* accel_y, int16_t* accel_z)
-{
-    int16_t gyro_result[3];
-    int16_t accel_result[3];
+float KalmanAngleRoll = 0, KalmanUncertanintyAngleRoll=2*2;
+float KalmanAnglePitch = 0, KalmanUncertanintyAnglePitch=2*2;
+float Kalman1DOutput[] = {0,0};
 
+void kalman_1d(float *kS, float *kU, const float kI, const float kM){
+    float S = *kS;
+    float U = *kU;
+    float I = kI;
+    float M = kM;
+    S = S+(0.004*I);
+    U = U+(0.004*0.004*4*4);
+    float G = U*(1/(1*U+3*3));
+    S = S + (G * (M - S));
+    U = (1 - G) * U;
+    *kS = Kalman1DOutput[0] = S;
+    *kU = Kalman1DOutput[1] = U;
+}
+
+void BoardGetAngle(float *Roll, float *Pitch)
+{
+    *Roll = KalmanAngleRoll;
+    *Pitch = KalmanAnglePitch;
+}
+
+void BoardGetIMU( float* gyro_x ,float* gyro_y, float* gyro_z, float* accel_x ,float* accel_y, float* accel_z)
+{
+    float gyro_result[3];
+    float accel_result[3];
+    float rad = M_PI*180.0f;
+    double accZInertial, temp;
+ 
 #if 1 //defined(SENSOR_DATA_FROM_REGISTERS)
-    do {
-		c6dofimu9_get_interrupt_status(&c6dofimu9);
-		DelayMs(DEF_GYRO_WAIT_TIME);
-	} while ((c6dofimu9.irq_status & 0x01) == 0x00);
+    // do {
+	// 	c6dofimu9_get_interrupt_status(&c6dofimu9);
+	// 	DelayMs(DEF_GYRO_WAIT_TIME);
+	// } while ((c6dofimu9.irq_status & 0x01) == 0x00);
 
     c6dofimu9_get_accel_data(&c6dofimu9, &accel_result[0], &accel_result[1],
                              &accel_result[2]);
@@ -536,15 +564,33 @@ void BoardGetIMU( int16_t* gyro_x ,int16_t* gyro_y, int16_t* gyro_z, int16_t* ac
     c6dofimu9_get_imu ( &c6dofimu9, &gyro_result, &accel_result, false );
 
 #endif
-    /* Gyroscope Calibration specific part */
-    // GC_Data_Handler(&msg_dat);
+
+	c6dofimu9.a.AngleRoll = atan(c6dofimu9.a.ay/sqrt((c6dofimu9.a.ax*c6dofimu9.a.ax)+(c6dofimu9.a.az*c6dofimu9.a.az))) * 1 / rad;
+
+  	c6dofimu9.a.AnglePitch = -atan(c6dofimu9.a.ax/sqrt((c6dofimu9.a.ay*c6dofimu9.a.ay)+(c6dofimu9.a.az*c6dofimu9.a.az))) * 1 / rad;
+    
+
+    kalman_1d(&KalmanAngleRoll,&KalmanUncertanintyAngleRoll,gyro_result[0], c6dofimu9.a.AngleRoll);
+    KalmanAngleRoll = Kalman1DOutput[0];
+    KalmanUncertanintyAngleRoll = Kalman1DOutput[1];
+    kalman_1d(&KalmanAnglePitch,&KalmanUncertanintyAnglePitch,gyro_result[1], c6dofimu9.a.AnglePitch);
+    KalmanAnglePitch = Kalman1DOutput[0];
+    KalmanUncertanintyAnglePitch = Kalman1DOutput[1];
+
+    accZInertial = -sin(c6dofimu9.a.AnglePitch * rad)
+							* (c6dofimu9.a.ax + cos(c6dofimu9.a.AnglePitch * rad))
+							* sin(c6dofimu9.a.AngleRoll * rad) * (c6dofimu9.a.ay+cos(c6dofimu9.a.AnglePitch * rad))
+							* cos(c6dofimu9.a.AngleRoll * rad) * c6dofimu9.a.az;   
+  	temp = accZInertial - 1;
+	accZInertial = temp * 9.81;
+	c6dofimu9.a.AccZInertial = (float) accZInertial * 100;
 
     *gyro_x = gyro_result[0];
     *gyro_y = gyro_result[1];
     *gyro_z = gyro_result[2];
-    *accel_x = accel_result[0];
-    *accel_y = accel_result[1];
-    *accel_z = accel_result[2];
+    *accel_x = c6dofimu9.a.ax;
+    *accel_y = c6dofimu9.a.ay;
+    *accel_z = c6dofimu9.a.az;
 }
 
 void BoardGetIMUTemperature(int32_t * temperature)

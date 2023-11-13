@@ -106,6 +106,7 @@ extern "C"
 #define LED_3                                       NC
 #define LED_4                                       PA_8
 #elif ( USE_IMU == 1)
+#define IMU_CS                                      PB_12
 #define IMU_SYNC                                    PA_12
 #define IMU_INT                                     PA_8
 #define LED_2                                       PA_15

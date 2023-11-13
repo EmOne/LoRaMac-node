@@ -9,10 +9,10 @@
  */
 
 /* states */
-#define Nsta 8
+#define Nsta 3
 
 /* observables */
-#define Mobs 4
+#define Mobs 3
 
 typedef struct {
 

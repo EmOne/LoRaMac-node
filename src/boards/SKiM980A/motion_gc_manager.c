@@ -149,12 +149,12 @@ int16_t gyro_bias_to_mdps(float gyro_bias)
   float dps_float;
   if (gyro_bias >= 0.0f)
   {
-    dps_float = gyro_bias + 0.5f;
+    dps_float = gyro_bias + 0.1f;
     return (int16_t)dps_float;
   }
   else
   {
-    dps_float = gyro_bias - 0.5f;
+    dps_float = gyro_bias - 0.1f;
     return (int16_t)dps_float;
   }
   #endif

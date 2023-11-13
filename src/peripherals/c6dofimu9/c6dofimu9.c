@@ -27,8 +27,8 @@
  */
 #include <stdbool.h>
 #include "utilities.h"
-#include "i2c.h"
-#include "gpio.h"
+#include "i2c-board.h"
+#include "gpio-board.h"
 #include "board-config.h"
 #include "math.h"
 #include "delay.h"
@@ -56,6 +56,7 @@ static void ekf_model(ekf_t * ekf);
 extern I2c_t I2c;
 extern Gpio_t imu_sync;
 extern Gpio_t imu_interupt;
+extern Gpio_t imu_chipselect;
 extern c6dofimu9_t c6dofimu9;
 extern c6dofimu9_cfg_t cfg;
 
@@ -189,45 +190,46 @@ C6DOFIMU9_RETVAL c6dofimu9_init ( c6dofimu9_t *ctx, c6dofimu9_cfg_t *cfg )
     //        i2c_cfg.scl = cfg->scl;
     //        i2c_cfg.sda = cfg->sda;
 
-            ctx->i2c.Instance = I2C1;
-            ctx->i2c.Init.ClockSpeed = 100000;
-            ctx->i2c.Init.DutyCycle = I2C_DUTYCYCLE_2;
-            ctx->i2c.Init.OwnAddress1 = 0;
-            ctx->i2c.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-            ctx->i2c.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-            ctx->i2c.Init.OwnAddress2 = 0;
-            ctx->i2c.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-            ctx->i2c.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+    //         ctx->i2c.Instance = I2C1;
+    //         ctx->i2c.Init.ClockSpeed = cfg->i2c_speed;
+    //         ctx->i2c.Init.DutyCycle = I2C_DUTYCYCLE_2;
+    //         ctx->i2c.Init.OwnAddress1 = 0;
+    //         ctx->i2c.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+    //         ctx->i2c.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+    //         ctx->i2c.Init.OwnAddress2 = 0;
+    //         ctx->i2c.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+    //         ctx->i2c.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
 
-            __HAL_RCC_GPIOB_CLK_ENABLE();
+    //         __HAL_RCC_GPIOB_CLK_ENABLE();
 
-            cfg->scl.Pin = SCL_PIN;
-            cfg->scl.Mode = GPIO_MODE_AF_OD;
-            cfg->scl.Alternate = GPIO_AF4_I2C1;
-            cfg->scl.Pull = GPIO_NOPULL;
-            cfg->scl.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-            HAL_GPIO_Init(SCL_PORT, &cfg->scl);
+    //         cfg->scl.Pin = SCL_PIN;
+    //         cfg->scl.Mode = GPIO_MODE_AF_OD;
+    //         cfg->scl.Alternate = GPIO_AF4_I2C1;
+    //         cfg->scl.Pull = GPIO_NOPULL;
+    //         cfg->scl.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    //         HAL_GPIO_Init(SCL_PORT, &cfg->scl);
 
-            cfg->sda.Pin = SDA_PIN;
-            cfg->sda.Mode = GPIO_MODE_AF_OD;
-            cfg->sda.Alternate = GPIO_AF4_I2C1;
-            cfg->sda.Pull = GPIO_NOPULL;
-            cfg->sda.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-            HAL_GPIO_Init(SDA_PORT, &cfg->sda);
+    //         cfg->sda.Pin = SDA_PIN;
+    //         cfg->sda.Mode = GPIO_MODE_AF_OD;
+    //         cfg->sda.Alternate = GPIO_AF4_I2C1;
+    //         cfg->sda.Pull = GPIO_NOPULL;
+    //         cfg->sda.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    //         HAL_GPIO_Init(SDA_PORT, &cfg->sda);
 
-            __HAL_RCC_I2C1_CLK_ENABLE();
+    //         __HAL_RCC_I2C1_CLK_ENABLE();
 
-            __HAL_RCC_I2C1_FORCE_RESET();
+    //         __HAL_RCC_I2C1_FORCE_RESET();
 
-            __HAL_RCC_I2C1_RELEASE_RESET();
+    //         __HAL_RCC_I2C1_RELEASE_RESET();
 
-            if (HAL_I2C_Init(&ctx->i2c) != HAL_OK)
-    //        if (  i2c_master_open( &ctx->i2c, &i2c_cfg ) == I2C_MASTER_ERROR )
-            {
-                return C6DOFIMU9_INIT_ERROR;
-            }
+    //         if (HAL_I2C_Init(&ctx->i2c) != HAL_OK)
+    // //        if (  i2c_master_open( &ctx->i2c, &i2c_cfg ) == I2C_MASTER_ERROR )
+    //         {
+    //             return C6DOFIMU9_INIT_ERROR;
+    //         }
 
-    //
+			I2cMcuInit( &I2c, I2C_1, I2C_SCL, I2C_SDA );
+			I2cMcuFormat( &I2c, MODE_I2C, I2C_DUTYCYCLE_2, true, I2C_ACK_ADD_7_BIT, cfg->i2c_speed );
     //        i2c_master_set_slave_address( &ctx->i2c, ctx->slave_address );
             ctx->slave_address = cfg->i2c_address;
 
@@ -243,9 +245,9 @@ C6DOFIMU9_RETVAL c6dofimu9_init ( c6dofimu9_t *ctx, c6dofimu9_cfg_t *cfg )
             cfg->cs.Mode = GPIO_MODE_OUTPUT_PP;
             cfg->cs.Pull = GPIO_PULLUP;
             cfg->cs.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-            HAL_GPIO_Init(ctx->cs, &cfg->cs);
-            HAL_GPIO_WritePin(CS_PORT, CS_PIN, GPIO_PIN_SET);
-
+            // HAL_GPIO_Init(ctx->cs, &cfg->cs);
+            // HAL_GPIO_WritePin(CS_PORT, CS_PIN, GPIO_PIN_SET);
+			GpioInit( &imu_chipselect, IMU_CS, PIN_OUTPUT, PIN_PUSH_PULL, PIN_PULL_UP, 1 );
         }
         else
         {
@@ -258,78 +260,79 @@ C6DOFIMU9_RETVAL c6dofimu9_init ( c6dofimu9_t *ctx, c6dofimu9_cfg_t *cfg )
     //        spi_cfg.miso   = cfg->miso;
     //        spi_cfg.mosi   = cfg->mosi;
 
-            ctx->spi.Instance = SPI2;
-            ctx->spi.Init.Mode = SPI_MODE_MASTER;
-            ctx->spi.Init.Direction = SPI_DIRECTION_2LINES;
-            ctx->spi.Init.DataSize = SPI_DATASIZE_8BIT;
-            ctx->spi.Init.CLKPolarity = SPI_POLARITY_LOW;
-            ctx->spi.Init.CLKPhase = SPI_PHASE_1EDGE;
-            ctx->spi.Init.NSS = SPI_NSS_SOFT;
-            ctx->spi.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-            ctx->spi.Init.FirstBit = SPI_FIRSTBIT_MSB;
-            ctx->spi.Init.TIMode = SPI_TIMODE_DISABLE;
-            ctx->spi.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-            ctx->spi.Init.CRCPolynomial = 10;
+    //         ctx->spi.Instance = SPI2;
+    //         ctx->spi.Init.Mode = SPI_MODE_MASTER;
+    //         ctx->spi.Init.Direction = SPI_DIRECTION_2LINES;
+    //         ctx->spi.Init.DataSize = SPI_DATASIZE_8BIT;
+    //         ctx->spi.Init.CLKPolarity = SPI_POLARITY_LOW;
+    //         ctx->spi.Init.CLKPhase = SPI_PHASE_1EDGE;
+    //         ctx->spi.Init.NSS = SPI_NSS_SOFT;
+    //         ctx->spi.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+    //         ctx->spi.Init.FirstBit = SPI_FIRSTBIT_MSB;
+    //         ctx->spi.Init.TIMode = SPI_TIMODE_DISABLE;
+    //         ctx->spi.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+    //         ctx->spi.Init.CRCPolynomial = 10;
 
-            ctx->cs = CS_PORT;
+    //         ctx->cs = CS_PORT;
 
-            cfg->cs.Pin = CS_PIN;
-            cfg->cs.Mode = GPIO_MODE_OUTPUT_PP;
-            cfg->cs.Pull = GPIO_NOPULL;
-            cfg->cs.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-            HAL_GPIO_Init(ctx->cs, &cfg->cs);
-    //        digital_out_init( &ctx->cs, cfg->cs );
-            ctx->chip_select = cfg->cs;
-    //
-            __HAL_RCC_GPIOB_CLK_ENABLE();
+    //         cfg->cs.Pin = CS_PIN;
+    //         cfg->cs.Mode = GPIO_MODE_OUTPUT_PP;
+    //         cfg->cs.Pull = GPIO_NOPULL;
+    //         cfg->cs.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    //         HAL_GPIO_Init(ctx->cs, &cfg->cs);
+    // //        digital_out_init( &ctx->cs, cfg->cs );
+    //         ctx->chip_select = cfg->cs;
+    // //
+    //         __HAL_RCC_GPIOB_CLK_ENABLE();
 
-            cfg->sck.Pin = SCK_PIN;
-            cfg->sck.Mode = GPIO_MODE_AF_PP;
-            cfg->sck.Alternate = GPIO_AF5_SPI2;
-            cfg->sck.Pull = GPIO_PULLDOWN;
-            cfg->sck.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-            HAL_GPIO_Init(SCK_PORT, &cfg->sck);
+    //         cfg->sck.Pin = SCK_PIN;
+    //         cfg->sck.Mode = GPIO_MODE_AF_PP;
+    //         cfg->sck.Alternate = GPIO_AF5_SPI2;
+    //         cfg->sck.Pull = GPIO_PULLDOWN;
+    //         cfg->sck.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    //         HAL_GPIO_Init(SCK_PORT, &cfg->sck);
 
-            cfg->miso.Pin = MISO_PIN;
-            cfg->miso.Mode = GPIO_MODE_AF_PP;
-            cfg->miso.Alternate = GPIO_AF5_SPI2;
-            cfg->miso.Pull = GPIO_PULLDOWN;
-            cfg->miso.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-            HAL_GPIO_Init(MISO_PORT, &cfg->miso);
+    //         cfg->miso.Pin = MISO_PIN;
+    //         cfg->miso.Mode = GPIO_MODE_AF_PP;
+    //         cfg->miso.Alternate = GPIO_AF5_SPI2;
+    //         cfg->miso.Pull = GPIO_PULLDOWN;
+    //         cfg->miso.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    //         HAL_GPIO_Init(MISO_PORT, &cfg->miso);
 
-            cfg->mosi.Pin = MOSI_PIN;
-            cfg->mosi.Mode = GPIO_MODE_AF_PP;
-            cfg->mosi.Alternate = GPIO_AF5_SPI2;
-            cfg->mosi.Pull = GPIO_PULLDOWN;
-            cfg->mosi.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-            HAL_GPIO_Init(MOSI_PORT, &cfg->mosi);
+    //         cfg->mosi.Pin = MOSI_PIN;
+    //         cfg->mosi.Mode = GPIO_MODE_AF_PP;
+    //         cfg->mosi.Alternate = GPIO_AF5_SPI2;
+    //         cfg->mosi.Pull = GPIO_PULLDOWN;
+    //         cfg->mosi.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    //         HAL_GPIO_Init(MOSI_PORT, &cfg->mosi);
 
-            __HAL_RCC_SPI2_CLK_ENABLE();
+    //         __HAL_RCC_SPI2_CLK_ENABLE();
 
-    //        if (  spi_master_open( &ctx->spi, &spi_cfg ) == SPI_MASTER_ERROR )
-            if (  HAL_SPI_Init(&ctx->spi) != HAL_OK)
-            {
-                return  C6DOFIMU9_INIT_ERROR;
-            }
+    // //        if (  spi_master_open( &ctx->spi, &spi_cfg ) == SPI_MASTER_ERROR )
+    //         if (  HAL_SPI_Init(&ctx->spi) != HAL_OK)
+    //         {
+    //             return  C6DOFIMU9_INIT_ERROR;
+    //         }
 
-    //
-    //        spi_master_set_default_write_data( &ctx->spi, C6DOFIMU9_DUMMY );
-    //        spi_master_set_speed( &ctx->spi, spi_cfg.speed );
-    //        spi_master_set_mode( &ctx->spi, spi_cfg.mode );
-    //        spi_master_set_chip_select_polarity( cfg->cs_polarity );
+    // //
+    // //        spi_master_set_default_write_data( &ctx->spi, C6DOFIMU9_DUMMY );
+    // //        spi_master_set_speed( &ctx->spi, spi_cfg.speed );
+    // //        spi_master_set_mode( &ctx->spi, spi_cfg.mode );
+    // //        spi_master_set_chip_select_polarity( cfg->cs_polarity );
 
-            ctx->read_f = c6dofimu9_spi_read;
-            ctx->write_f = c6dofimu9_spi_write;
+    //         ctx->read_f = c6dofimu9_spi_read;
+    //         ctx->write_f = c6dofimu9_spi_write;
 
-    //        spi_master_select_device( ctx->chip_select );
-            ctx->cs = CS_PORT;
+    // //        spi_master_select_device( ctx->chip_select );
+    //         ctx->cs = CS_PORT;
 
-            cfg->cs.Pin = CS_PIN;
-            cfg->cs.Mode = GPIO_MODE_OUTPUT_PP;
-            cfg->cs.Pull = GPIO_PULLUP;
-            cfg->cs.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-            HAL_GPIO_Init(ctx->cs, &cfg->cs);
-            HAL_GPIO_WritePin(CS_PORT, CS_PIN, GPIO_PIN_RESET);
+    //         cfg->cs.Pin = CS_PIN;
+    //         cfg->cs.Mode = GPIO_MODE_OUTPUT_PP;
+    //         cfg->cs.Pull = GPIO_PULLUP;
+    //         cfg->cs.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    //         HAL_GPIO_Init(ctx->cs, &cfg->cs);
+    //         HAL_GPIO_WritePin(CS_PORT, CS_PIN, GPIO_PIN_RESET);
+	// 		GpioInit( &imu_sync, IMU_SYNC, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
         }
         
         // Output pins 
@@ -362,9 +365,9 @@ C6DOFIMU9_RETVAL c6dofimu9_init ( c6dofimu9_t *ctx, c6dofimu9_cfg_t *cfg )
 		/* Get current settings and set desired ones */
 		MotionGC_GetKnobs(&Knobs);
 		Knobs.AccThr = 0.004f;
-		Knobs.GyroThr = 0.1f;
+		Knobs.GyroThr = 0.001f;
 		Knobs.MaxGyro = 250;
-		Knobs.MaxAcc = 6;
+		Knobs.MaxAcc = 12;
 		(void)MotionGC_SetKnobs(&Knobs);
 
 		/* Set sample frequency */
@@ -746,73 +749,104 @@ int16_t c6dofimu9_get_axis ( c6dofimu9_t *ctx, uint8_t addr_reg_msb, uint8_t add
     return result;
 }
 
-void c6dofimu9_get_accel_data ( c6dofimu9_t *ctx, int16_t *p_accel_x, int16_t *p_accel_y, int16_t *p_accel_z )
+void c6dofimu9_get_accel_data ( c6dofimu9_t *ctx, float *p_accel_x, float *p_accel_y, float *p_accel_z )
 {
-    *p_accel_x = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_ACCEL_XOUT_H, C6DOFIMU9_REG_ACCEL_XOUT_L ) * IAM20680_SENSITIVITY_0_12G) - ctx->accel_st_bias[0];
-    *p_accel_y = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_ACCEL_YOUT_H, C6DOFIMU9_REG_ACCEL_YOUT_L ) * IAM20680_SENSITIVITY_0_12G) - ctx->accel_st_bias[1];
-    *p_accel_z = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_ACCEL_ZOUT_H, C6DOFIMU9_REG_ACCEL_ZOUT_L ) * IAM20680_SENSITIVITY_0_12G) - ctx->accel_st_bias[2];
 
-	ctx->a.ax = (double) *p_accel_x;
-	ctx->a.ay = (double) *p_accel_y;
-	ctx->a.az = (double) *p_accel_z;
+    ctx->a.ax = (double) (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_ACCEL_XOUT_H, C6DOFIMU9_REG_ACCEL_XOUT_L ) ) * IAM20680_SENSITIVITY_0_12G;
+    ctx->a.ay = (double) (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_ACCEL_YOUT_H, C6DOFIMU9_REG_ACCEL_YOUT_L ) ) * IAM20680_SENSITIVITY_0_12G;
+    ctx->a.az = (double) (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_ACCEL_ZOUT_H, C6DOFIMU9_REG_ACCEL_ZOUT_L ) ) * IAM20680_SENSITIVITY_0_12G;
+
+	ctx->a.ax -= ctx->accel_st_bias[0];
+	ctx->a.ay -= ctx->accel_st_bias[1];
+	ctx->a.az -= ctx->accel_st_bias[2];
+
+	ctx->a.ax /= 1000;
+	ctx->a.ay /= 1000;
+	ctx->a.az /= 1000;
+
+	//Please adjust Accel X, Y, Z here
+	ctx->a.ax += 0.008;
+	ctx->a.ay += 0.012;
+	ctx->a.az += 0.023;
+
+	*p_accel_x = (float) ctx->a.ax;
+	*p_accel_y = (float) ctx->a.ay;
+	*p_accel_z = (float) ctx->a.az;
 }
 
-void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, int16_t *p_gyro_x, int16_t *p_gyro_y, int16_t *p_gyro_z )
+void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, float *p_gyro_x, float *p_gyro_y, float *p_gyro_z )
 {
-    *p_gyro_x = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_XOUT_H, C6DOFIMU9_REG_GYRO_XOUT_L ) * IAM20680_GYRO_SENSITIVITY_250) ;
-    *p_gyro_y = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_YOUT_H, C6DOFIMU9_REG_GYRO_YOUT_L ) * IAM20680_GYRO_SENSITIVITY_250) ;
-    *p_gyro_z = (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_ZOUT_H, C6DOFIMU9_REG_GYRO_ZOUT_L ) * IAM20680_GYRO_SENSITIVITY_250) ;
+   ctx->g.gx = (double) (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_XOUT_H, C6DOFIMU9_REG_GYRO_XOUT_L ) ) * IAM20680_GYRO_SENSITIVITY_250;
+   ctx->g.gy = (double) (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_YOUT_H, C6DOFIMU9_REG_GYRO_YOUT_L ) ) * IAM20680_GYRO_SENSITIVITY_250;
+   ctx->g.gz = (double) (c6dofimu9_get_axis( ctx, C6DOFIMU9_REG_GYRO_ZOUT_H, C6DOFIMU9_REG_GYRO_ZOUT_L ) ) * IAM20680_GYRO_SENSITIVITY_250;
 
-	ctx->g.gx = (double) *p_gyro_x;
-	ctx->g.gy = (double) *p_gyro_y;
-	ctx->g.gz = (double) *p_gyro_z;
+	ctx->g.gx -= ctx->gyro_st_bias[0];
+	ctx->g.gy -= ctx->gyro_st_bias[1];
+	ctx->g.gz -= ctx->gyro_st_bias[2];
+
+	//Please adjust GYRO X, Y, Z here
+	// ctx->g.gx += 0.008;
+	// ctx->g.gy += 0.012;
+	// ctx->g.gz += 0.023;
+
+	*p_gyro_x = (float) (ctx->g.gx);
+	*p_gyro_y = (float) (ctx->g.gy);
+	*p_gyro_z = (float) (ctx->g.gz);
 
 #if 1
-  	MGC_input_t data_in;
-  	MGC_output_t data_out;
-	uint32_t elapsed_time_us = 0U;
-  	int bias_update = 0;
-  /* Convert acceleration [g] */
-      data_in.Acc[0] = (float)ctx->a.ax;
-      data_in.Acc[1] = (float)ctx->a.ay;
-      data_in.Acc[2] = (float)ctx->a.az;
+//   	MGC_input_t data_in;
+//   	MGC_output_t data_out;
+// 	uint32_t elapsed_time_us = 0U;
+//   	int bias_update = 0;
 
-      /* Convert angular velocity [dps] */
-      data_in.Gyro[0] = (float)ctx->g.gx;
-      data_in.Gyro[1] = (float)ctx->g.gy;
-      data_in.Gyro[2] = (float)ctx->g.gz;
+//   /* Convert acceleration [g] */
+//       data_in.Acc[0] = (float)ctx->a.ax;
+//       data_in.Acc[1] = (float)ctx->a.ay;
+//       data_in.Acc[2] = (float)ctx->a.az;
 
-	  DWT_Start();
+//       /* Convert angular velocity [dps] */
+//       data_in.Gyro[0] = (float)ctx->g.gx ;
+//       data_in.Gyro[1] = (float)ctx->g.gy ;
+//       data_in.Gyro[2] = (float)ctx->g.gz ;
 
-      MotionGC_manager_update(&data_in, &data_out, &bias_update);
+// 	  DWT_Start();
 
-	  MotionGC_manager_compensate(&ctx->g, &ctx->ekf_g);
+//       MotionGC_manager_update(&data_in, &data_out, &bias_update);
 
-	  SV_Rho[0] = *p_gyro_x = (int16_t)(ctx->ekf_g.gx);
-	  SV_Rho[1] = *p_gyro_y = (int16_t)(ctx->ekf_g.gy);
-	  SV_Rho[2] = *p_gyro_z = (int16_t)(ctx->ekf_g.gz);
-	  //			SV_Rho[3] = (double) flow.temp / 10.0f;
-	  /* Update autoreload and capture compare registers value */
-	  ctx->abs_g.gx = fabs((double)*p_gyro_x);
-	  ctx->abs_g.gy = fabs((double)*p_gyro_y);
-	  ctx->abs_g.gz = fabs((double)*p_gyro_z);
+// 	  MotionGC_manager_compensate(&ctx->g, &ctx->delta_g);
+
+// 	*p_gyro_x = data_out.GyroBiasX; //(ctx->delta_g.gx);
+// 	*p_gyro_y = data_out.GyroBiasY;
+// 	*p_gyro_z = data_out.GyroBiasZ;
+
+// 	  SV_Rho[0] = (ctx->g.gx);
+// 	  SV_Rho[1] = (ctx->g.gy);
+// 	  SV_Rho[2] = (ctx->g.gz);
+// // 	  //			SV_Rho[3] = (double) flow.temp / 10.0f;
+
+// 	  /* Update autoreload and capture compare registers value */
+// 	  ctx->abs_g.gx = fabs(ctx->g.gx);
+// 	  ctx->abs_g.gy = fabs(ctx->g.gy);
+// 	  ctx->abs_g.gz = fabs(ctx->g.gz);
 	  			
-// //			sprintf(txt, "$E:%lf %lf %lf\r\n", flow.e.roll, flow.e.pitch, flow.e.yaw);
-// //			len = strlen(txt);
-// //			HAL_UART_Transmit(&huart1, (uint8_t*) txt, len, 500);
-// //			CDC_Transmit_HS((uint8_t*) txt, len);
+// // // //			sprintf(txt, "$E:%lf %lf %lf\r\n", flow.e.roll, flow.e.pitch, flow.e.yaw);
+// // // //			len = strlen(txt);
+// // // //			HAL_UART_Transmit(&huart1, (uint8_t*) txt, len, 500);
+// // // //			CDC_Transmit_HS((uint8_t*) txt, len);
 
-			ekf_model(&ekf);
-//
-			ekf_step(&ekf, (double*) SV_Rho);
+// 		ekf_model(&ekf);
 // //
-// //			// estimate
-			for (k = 0; k < Nsta; ++k)
-				*(((double *)&ctx->ekf_g) + k) = Pos_KF[j][k] = ekf.x[k];
+// 		ekf_step(&ekf, (double*) SV_Rho);
+// // //
+// // //	// estimate
+// 		for (k = 0; k < Nsta; ++k) {
+// 			Pos_KF[j][k] = ekf.x[k];
+// 			*(((double *)&ctx->ekf_g) + k) = ekf.x[k];
+// 		}
 
-			*p_gyro_x = (int16_t) (ctx->ekf_g.gx);
-			*p_gyro_y = (int16_t) (ctx->ekf_g.gy);
-			*p_gyro_z = (int16_t) (ctx->ekf_g.gz);
+// 		// *p_gyro_x = (ctx->ekf_g.gx);
+// 		// *p_gyro_y = (ctx->ekf_g.gy);
+// 		// *p_gyro_z = (ctx->ekf_g.gz);
 
 // 		for (k = 0; k < Mobs; ++k)
 // 			mean_Pos_KF[k] = 0;
@@ -821,17 +855,18 @@ void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, int16_t *p_gyro_x, int16_t *p_g
 // 				mean_Pos_KF[k] += Pos_KF[j][k];
 // 		for (k = 0; k < Mobs; ++k)
 // 			mean_Pos_KF[k] /= SEED;
-// 				// Dump filtered positions minus their means
+
+// 		// Dump filtered positions minus their means
 // 		ctx->delta_g.gx = 0;
 // 		ctx->delta_g.gy = 0;
 // 		ctx->delta_g.gz = 0;
 // 		for (j = 0; j < SEED; ++j) {
 
-// 			printf("$M:%ld %ld %ld\r\n", (int16_t) mean_Pos_KF[0]* 100, (int16_t) mean_Pos_KF[1]* 100,
-// 					(int16_t) mean_Pos_KF[2]* 100);
-// //			len = strlen(txt);
-// //			HAL_UART_Transmit(&huart1, (uint8_t*) txt, len, 500);
-// //			CDC_Transmit_HS((uint8_t*) txt, len);
+// // 			printf("$M:%ld %ld %ld\r\n", (int16_t) mean_Pos_KF[0], (int16_t) mean_Pos_KF[1],
+// // 					(int16_t) mean_Pos_KF[2]);
+// // //			len = strlen(txt);
+// // //			HAL_UART_Transmit(&huart1, (uint8_t*) txt, len, 500);
+// // //			CDC_Transmit_HS((uint8_t*) txt, len);
 
 // 			ctx->delta_g.gx += (ctx->ekf_g.gx - mean_Pos_KF[0]);
 // 			ctx->delta_g.gy += (ctx->ekf_g.gy - mean_Pos_KF[1]);
@@ -840,6 +875,10 @@ void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, int16_t *p_gyro_x, int16_t *p_g
 // 		ctx->delta_g.gx /= SEED;
 // 		ctx->delta_g.gy /= SEED;
 // 		ctx->delta_g.gz /= SEED;
+
+// 		*p_gyro_x = (int16_t) (ctx->delta_g.gx);
+// 		*p_gyro_y = (int16_t) (ctx->delta_g.gy);
+// 		*p_gyro_z = (int16_t) (ctx->delta_g.gz);
 
 // 		printf("$D:%ld %ld %ld\r\n", (int16_t) (ctx->delta_g.gx* DEF_ST_PRECISION), (int16_t) (ctx->delta_g.gy* DEF_ST_PRECISION),
 // 				(int16_t) (ctx->delta_g.gz* DEF_ST_PRECISION));
@@ -1051,13 +1090,15 @@ static int c6dofimu9_i2c_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_bu
 
 //    i2c_master_write( &ctx->i2c, tx_buf, len + 1 );
 //    HAL_I2C_Master_Transmit(&ctx->i2c, ctx->slave_address << 1, tx_buf, len+1, 1000);
-    return HAL_I2C_Mem_Write(&ctx->i2c, (uint16_t) (ctx->slave_address << 1), (uint16_t) reg, I2C_MEMADD_SIZE_8BIT, data_buf, len, 1000);
+	return I2cMcuWriteMemBuffer( &I2c, (ctx->slave_address << 1), (uint16_t) reg, data_buf, (uint16_t) len );
+    // return HAL_I2C_Mem_Write(&ctx->i2c, (uint16_t) (ctx->slave_address << 1), (uint16_t) reg, I2C_MEMADD_SIZE_8BIT, data_buf, len, 1000);
 }
 
 static int c6dofimu9_i2c_read ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len )
 {
 //    i2c_master_write_then_read( &ctx->i2c, &reg, 1, data_buf, len );
-	return HAL_I2C_Mem_Read(&ctx->i2c, (uint16_t) (ctx->slave_address << 1), (uint16_t) reg, I2C_MEMADD_SIZE_8BIT, data_buf, len, 1000);
+	return I2cMcuReadMemBuffer( &I2c, (ctx->slave_address << 1), (uint16_t) reg, data_buf, (uint16_t) len );
+	// return HAL_I2C_Mem_Read(&ctx->i2c, (uint16_t) (ctx->slave_address << 1), (uint16_t) reg, I2C_MEMADD_SIZE_8BIT, data_buf, len, 1000);
 }
 
 static void c6dofimu9_spi_write ( c6dofimu9_t *ctx, uint8_t reg, uint8_t *data_buf, uint8_t len )

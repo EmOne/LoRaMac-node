@@ -100,11 +100,13 @@ float BoardGetTemperature( void );
 int BoardGetCapSenseStatus( uint8_t* cap );
 
 /*!
- * \brief Get the imu sense status
- *
- * \retval a number of channels
+ * \brief Get the imu sense angle
  */
-void BoardGetIMU( int16_t* gyro_x ,int16_t* gyro_y, int16_t* gyro_z, int16_t* accel_x, int16_t* accel_y, int16_t* accel_z);
+void BoardGetAngle(float *Roll, float *Pitch);
+/*!
+ * \brief Get the imu sense value
+ */
+void BoardGetIMU( float* gyro_x ,float* gyro_y, float* gyro_z, float* accel_x, float* accel_y, float* accel_z);
 /*!
  * \brief Get the imu temperature sense status
  *

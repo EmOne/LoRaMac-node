@@ -51,7 +51,7 @@
  * \{
  */
 #define SENSOR_DATA_FROM_REGISTERS
-#define ENABLE_GYRO_HW_SELFTEST
+// #define ENABLE_GYRO_HW_SELFTEST
 ////#define C6DOFIMU9_MAP_MIKROBUS( cfg, mikrobus ) \
 //   cfg.scl   = MIKROBUS( mikrobus, MIKROBUS_SCL ); \
 //   cfg.sda   = MIKROBUS( mikrobus, MIKROBUS_SDA ); \
@@ -64,7 +64,7 @@
 /** \} */
 typedef struct Quaternion
 {
-	double w, x, y, z;
+	double x, y, z, w;
 } Quaternion;
 
 typedef struct EulerAngles
@@ -74,12 +74,13 @@ typedef struct EulerAngles
 
 typedef struct Gyroscope
 {
-	double gy, gx, gz;
+	double gx, gy, gz;
 } Gyroscope;
 
 typedef struct Accelator
 {
-	double ay, ax, az;
+	double ax, ay, az;
+	double AngleRoll, AnglePitch, AccZInertial;
 } Accelator;
 
 /**
@@ -1051,7 +1052,7 @@ int16_t c6dofimu9_get_axis ( c6dofimu9_t *ctx, uint8_t addr_reg_msb, uint8_t add
  * targeted starts from C6DOFIMU9_REG_ACCEL_XOUT_H to the C6DOFIMU9_REG_ACCEL_ZOUT_L register address
  * of IAM-20680 High Performance Automotive 6-Axis MotionTracking Device on 6DOF IMU 9 Click board.
  */
-void c6dofimu9_get_accel_data ( c6dofimu9_t *ctx, int16_t *p_accel_x, int16_t *p_accel_y, int16_t *p_accel_z );
+void c6dofimu9_get_accel_data ( c6dofimu9_t *ctx, float *p_accel_x, float *p_accel_y, float *p_accel_z );
 
 /**
  * @brief Read Gyro X-axis, Y-axis and Z-axis axis function
@@ -1065,7 +1066,7 @@ void c6dofimu9_get_accel_data ( c6dofimu9_t *ctx, int16_t *p_accel_x, int16_t *p
  * targeted starts from C6DOFIMU9_REG_GYRO_XOUT_H to the C6DOFIMU9_REG_GYRO_ZOUT_L register address
  * of IAM-20680 High Performance Automotive 6-Axis MotionTracking Device on 6DOF IMU 9 Click board.
  */
-void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, int16_t *p_gyro_x, int16_t *p_gyro_y, int16_t *p_gyro_z );
+void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, float *p_gyro_x, float *p_gyro_y, float *p_gyro_z );
 
 void c6dofimu9_get_temperature_data ( c6dofimu9_t *ctx, int32_t *temp );
 

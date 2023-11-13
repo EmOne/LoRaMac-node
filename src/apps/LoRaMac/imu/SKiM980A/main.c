@@ -261,8 +261,9 @@ extern Gpio_t Led3; // App
 extern Uart_t Uart1;
 
 #if ( USE_IMU == 1 )
-int16_t acc_x = 0, acc_y = 0, acc_z = 0;
-int16_t gyr_x = 0, gyr_y = 0, gyr_z = 0;
+float AccX = 0, AccY = 0, AccZ = 0;
+float gyr_x = 0, gyr_y = 0, gyr_z = 0;
+float Roll, Pitch;
 int32_t imu_temperature;
 #define SAMPLING_RATE 10 //100Hz
 #endif
@@ -290,7 +291,7 @@ int main( void )
 
     const Version_t appVersion = { .Value = FIRMWARE_VERSION };
     const Version_t gitHubVersion = { .Value = GITHUB_VERSION };
-    DisplayAppInfo( "touch-sensing", 
+    DisplayAppInfo( "imu-sensing", 
                     &appVersion,
                     &gitHubVersion );
 
@@ -496,18 +497,18 @@ static void PrepareTxFrame( void )
 
 #if (USE_IMU == 1)
     // BoardGetIMU(&gyr_x, &gyr_y, &gyr_z, &acc_x, &acc_y, &acc_z);
-    AppData.Buffer[channel++] = gyr_x >> 8;
-    AppData.Buffer[channel++] = gyr_x >> 0;
-    AppData.Buffer[channel++] = gyr_y >> 8;
-    AppData.Buffer[channel++] = gyr_y >> 0;
-    AppData.Buffer[channel++] = gyr_z >> 8;
-    AppData.Buffer[channel++] = gyr_z >> 0;
-    AppData.Buffer[channel++] = acc_x >> 8;
-    AppData.Buffer[channel++] = acc_x >> 0;
-    AppData.Buffer[channel++] = acc_y >> 8;
-    AppData.Buffer[channel++] = acc_y >> 0;
-    AppData.Buffer[channel++] = acc_z >> 8;
-    AppData.Buffer[channel++] = acc_z >> 0;
+    uint32_t* r = (uint32_t *) &Roll;
+    uint32_t* p = (uint32_t *) &Pitch;
+    AppData.Buffer[channel++] = *r >> 24;
+    AppData.Buffer[channel++] = *r >> 16;
+    AppData.Buffer[channel++] = *r >> 8;
+    AppData.Buffer[channel++] = *r >> 0;
+
+    AppData.Buffer[channel++] = *p >> 24;
+    AppData.Buffer[channel++] = *p >> 16;
+    AppData.Buffer[channel++] = *p >> 8;
+    AppData.Buffer[channel++] = *p >> 0;
+    // AppData.Buffer[channel++] = Altitude >> 0;
 #endif    
 
     // Read the current voltage level
@@ -627,28 +628,30 @@ static void OnLed4TimerEvent( void* context )
     BoardGetPotiLevel();
 #elif ( USE_IMU == 1)
 //TODO: IMU Read FIFO
-    int16_t lacc_x, lacc_y, lacc_z;
-    int16_t lgyr_x, lgyr_y, lgyr_z;
-    int32_t lTemperature;
-    BoardGetIMU(&lgyr_x, &lgyr_y, &lgyr_z, &lacc_x, &lacc_y, &lacc_z);
-    acc_x = lacc_x ;
-    acc_y = lacc_y ;
-    acc_z = lacc_z ;
-    gyr_x += lgyr_x * 10 ; 
-    gyr_y += lgyr_y * 10 ;
-    gyr_z += lgyr_z * 10 ;
-
-//     AngleRoll=atan(AccY/sqrt(AccX*AccX+AccZ*AccZ))*1/(3.142/180);
-//   AnglePitch=-atan(AccX/sqrt(AccY*AccY+AccZ*AccZ))*1/(3.142/180);
-
-    printf("AX:%ld ", acc_x);
-    printf("AY:%ld ", acc_y);
-    printf("AZ:%ld\r\n", acc_z);
-    printf("GX:%ld ", gyr_x);
-    printf("GY:%ld ", gyr_y);
-    printf("GZ:%ld\r\n", gyr_z);
+    float lacc_x, lacc_y, lacc_z;
+    float lgyr_x, lgyr_y, lgyr_z;
     
-    printf("$K:%ld %ld %ld\r\n", (int16_t) (gyr_x), (int16_t) (gyr_y), (int16_t)(gyr_z));
+    // int32_t lTemperature;
+    BoardGetIMU(&lgyr_x, &lgyr_y, &lgyr_z, &lacc_x, &lacc_y, &lacc_z);
+    AccX = lacc_x ;
+    AccY = lacc_y ;
+    AccZ = lacc_z ;
+    gyr_x = lgyr_x ; 
+    gyr_y = lgyr_y ;
+    gyr_z = lgyr_z ;
+
+    BoardGetAngle(&Roll, &Pitch);
+
+    printf("AX:%f ", AccX);
+    printf("AY:%f ", AccY);
+    printf("AZ:%f\r\n", AccZ);
+    printf("GX:%f ", gyr_x);
+    printf("GY:%f ", gyr_y);
+    printf("GZ:%f\r\n", gyr_z);
+    printf("Angle roll:%f ", Roll);
+    printf("Angle pitch:%f \r\n", Pitch);
+    
+    printf("$K:%f %f %ld\r\n", (Roll), (Pitch), (0));
     
     // BoardGetIMUTemperature(&lTemperature);
     // imu_temperature = lTemperature;
