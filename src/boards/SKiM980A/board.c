@@ -521,32 +521,38 @@ float KalmanAngleRoll = 0, KalmanUncertanintyAngleRoll=2*2;
 float KalmanAnglePitch = 0, KalmanUncertanintyAnglePitch=2*2;
 float Kalman1DOutput[] = {0,0};
 
-void kalman_1d(float *kS, float *kU, const float kI, const float kM){
-    float S = *kS;
-    float U = *kU;
+void kalman_1d(float kS, float kU, const float kI, const float kM){
+    float S = kS;
+    float U = kU;
     float I = kI;
     float M = kM;
-    S = S+(0.004*I);
-    U = U+(0.004*0.004*4*4);
-    float G = U*(1/(1*U+3*3));
+    float Ts = 0.01;
+    float g_stdev = 4;
+    float a_stdev = 3;
+
+    S = S+(Ts*I);
+    U = U+(Ts*Ts*g_stdev*g_stdev);
+    float G = U*(1/(1*U+a_stdev*a_stdev));
     S = S + (G * (M - S));
     U = (1 - G) * U;
-    *kS = Kalman1DOutput[0] = S;
-    *kU = Kalman1DOutput[1] = U;
+    Kalman1DOutput[0] = S;
+    Kalman1DOutput[1] = U;
 }
 
 void BoardGetAngle(float *Roll, float *Pitch)
 {
-    *Roll = KalmanAngleRoll;
-    *Pitch = KalmanAnglePitch;
+    // *Roll = (float) c6dofimu9.a.AngleRoll;
+    // *Pitch = (float) c6dofimu9.a.AnglePitch;
+    *Roll = KalmanAngleRoll; //(float) c6dofimu9.a.AngleRoll;
+    *Pitch = KalmanAnglePitch; //(float) c6dofimu9.a.AnglePitch;
 }
 
 void BoardGetIMU( float* gyro_x ,float* gyro_y, float* gyro_z, float* accel_x ,float* accel_y, float* accel_z)
 {
     float gyro_result[3];
     float accel_result[3];
-    float rad = M_PI*180.0f;
-    double accZInertial, temp;
+    float rad = (M_PI*90) / 2;
+    float accZInertial, AngleRoll, AnglePitch;
  
 #if 1 //defined(SENSOR_DATA_FROM_REGISTERS)
     // do {
@@ -565,24 +571,28 @@ void BoardGetIMU( float* gyro_x ,float* gyro_y, float* gyro_z, float* accel_x ,f
 
 #endif
 
-	c6dofimu9.a.AngleRoll = atan(c6dofimu9.a.ay/sqrt((c6dofimu9.a.ax*c6dofimu9.a.ax)+(c6dofimu9.a.az*c6dofimu9.a.az))) * 1 / rad;
+	AngleRoll = atanf(accel_result[1]/sqrtf((accel_result[0]*accel_result[0])+(accel_result[2]*accel_result[2]))) / 1.567 * 90;
+  	AnglePitch = -atanf(accel_result[0]/sqrtf((accel_result[1]*accel_result[1])+(accel_result[2]*accel_result[2]))) / 1.567 * 90;
+    printf("Angle roll:%f ", AngleRoll);
+    printf("Angle pitch:%f \r\n", AnglePitch);
 
-  	c6dofimu9.a.AnglePitch = -atan(c6dofimu9.a.ax/sqrt((c6dofimu9.a.ay*c6dofimu9.a.ay)+(c6dofimu9.a.az*c6dofimu9.a.az))) * 1 / rad;
-    
+    c6dofimu9.a.AngleRoll = AngleRoll;
+    c6dofimu9.a.AnglePitch = AnglePitch;
 
-    kalman_1d(&KalmanAngleRoll,&KalmanUncertanintyAngleRoll,gyro_result[0], c6dofimu9.a.AngleRoll);
+    kalman_1d(KalmanAngleRoll, KalmanUncertanintyAngleRoll, gyro_result[0], AngleRoll);
     KalmanAngleRoll = Kalman1DOutput[0];
     KalmanUncertanintyAngleRoll = Kalman1DOutput[1];
-    kalman_1d(&KalmanAnglePitch,&KalmanUncertanintyAnglePitch,gyro_result[1], c6dofimu9.a.AnglePitch);
+    kalman_1d(KalmanAnglePitch, KalmanUncertanintyAnglePitch, gyro_result[1], AnglePitch);
     KalmanAnglePitch = Kalman1DOutput[0];
     KalmanUncertanintyAnglePitch = Kalman1DOutput[1];
+    printf("kAngle roll:%f ", KalmanAngleRoll);
+    printf("kAngle pitch:%f \r\n", KalmanAnglePitch);
 
-    accZInertial = -sin(c6dofimu9.a.AnglePitch * rad)
-							* (c6dofimu9.a.ax + cos(c6dofimu9.a.AnglePitch * rad))
-							* sin(c6dofimu9.a.AngleRoll * rad) * (c6dofimu9.a.ay+cos(c6dofimu9.a.AnglePitch * rad))
-							* cos(c6dofimu9.a.AngleRoll * rad) * c6dofimu9.a.az;   
-  	temp = accZInertial - 1;
-	accZInertial = temp * 9.81;
+    accZInertial = -sin(AnglePitch * rad)
+							* (accel_result[0] + cos(AnglePitch * rad))
+							* sin(AngleRoll * rad) * (accel_result[1] + cos(AnglePitch * rad))
+							* cos(AngleRoll * rad) * accel_result[2];   
+  	accZInertial = accZInertial - 1 * 9.81;
 	c6dofimu9.a.AccZInertial = (float) accZInertial * 100;
 
     *gyro_x = gyro_result[0];

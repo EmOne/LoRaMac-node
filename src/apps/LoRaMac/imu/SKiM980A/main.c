@@ -648,8 +648,6 @@ static void OnLed4TimerEvent( void* context )
     printf("GX:%f ", gyr_x);
     printf("GY:%f ", gyr_y);
     printf("GZ:%f\r\n", gyr_z);
-    printf("Angle roll:%f ", Roll);
-    printf("Angle pitch:%f \r\n", Pitch);
     
     printf("$K:%f %f %ld\r\n", (Roll), (Pitch), (0));
     

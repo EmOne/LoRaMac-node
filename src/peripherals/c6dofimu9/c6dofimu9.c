@@ -360,21 +360,21 @@ C6DOFIMU9_RETVAL c6dofimu9_init ( c6dofimu9_t *ctx, c6dofimu9_cfg_t *cfg )
         GpioInit( &imu_interupt, IMU_INT, PIN_INPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
         GpioSetInterrupt( &imu_interupt, IRQ_RISING_EDGE, IRQ_HIGH_PRIORITY, c6dofimu9_irq_handler );
 
-		ekf_init(&ekf, Nsta, Mobs);
-		ekf_local_init(&ekf);
-		/* Get current settings and set desired ones */
-		MotionGC_GetKnobs(&Knobs);
-		Knobs.AccThr = 0.004f;
-		Knobs.GyroThr = 0.001f;
-		Knobs.MaxGyro = 250;
-		Knobs.MaxAcc = 12;
-		(void)MotionGC_SetKnobs(&Knobs);
+		// ekf_init(&ekf, Nsta, Mobs);
+		// ekf_local_init(&ekf);
+		// /* Get current settings and set desired ones */
+		// MotionGC_GetKnobs(&Knobs);
+		// Knobs.AccThr = 0.004f;
+		// Knobs.GyroThr = 0.001f;
+		// Knobs.MaxGyro = 250;
+		// Knobs.MaxAcc = 12;
+		// (void)MotionGC_SetKnobs(&Knobs);
 
-		/* Set sample frequency */
+		// /* Set sample frequency */
   
-		MotionGC_manager_set_frequency(1000.0f / 10);
+		// MotionGC_manager_set_frequency(1000.0f / 10);
 
-		DWT_Init();
+		// DWT_Init();
 
         IMUInitialized = 1;
     }
@@ -765,9 +765,9 @@ void c6dofimu9_get_accel_data ( c6dofimu9_t *ctx, float *p_accel_x, float *p_acc
 	ctx->a.az /= 1000;
 
 	//Please adjust Accel X, Y, Z here
-	ctx->a.ax += 0.008;
-	ctx->a.ay += 0.012;
-	ctx->a.az += 0.023;
+	ctx->a.ax += 0.011;
+	ctx->a.ay += 0.010;
+	ctx->a.az += 0.021;
 
 	*p_accel_x = (float) ctx->a.ax;
 	*p_accel_y = (float) ctx->a.ay;
@@ -785,9 +785,9 @@ void c6dofimu9_get_gyro_data ( c6dofimu9_t *ctx, float *p_gyro_x, float *p_gyro_
 	ctx->g.gz -= ctx->gyro_st_bias[2];
 
 	//Please adjust GYRO X, Y, Z here
-	// ctx->g.gx += 0.008;
-	// ctx->g.gy += 0.012;
-	// ctx->g.gz += 0.023;
+	ctx->g.gx += 1.22008;
+	ctx->g.gy += 0.87;
+	ctx->g.gz += -0.18;
 
 	*p_gyro_x = (float) (ctx->g.gx);
 	*p_gyro_y = (float) (ctx->g.gy);
