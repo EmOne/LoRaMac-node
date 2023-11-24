@@ -61,7 +61,7 @@
 /*!
  * Defines the application data transmission duty cycle. 5s, value in [ms].
  */
-#define APP_TX_DUTYCYCLE                            60000
+#define APP_TX_DUTYCYCLE                            30000
 
 /*!
  * Defines a random delay for application data transmission duty cycle. 1s,
@@ -263,8 +263,9 @@ extern Uart_t Uart1;
 #if ( USE_IMU == 1 )
 float AccX = 0, AccY = 0, AccZ = 0;
 float gyr_x = 0, gyr_y = 0, gyr_z = 0;
-float Roll, Pitch;
-int32_t imu_temperature;
+float Roll, Pitch, Height = 0, Velocity = 0;
+int32_t imu_temperature, N = 0;
+
 #define SAMPLING_RATE 10 //100Hz
 #endif
 
@@ -499,6 +500,10 @@ static void PrepareTxFrame( void )
     // BoardGetIMU(&gyr_x, &gyr_y, &gyr_z, &acc_x, &acc_y, &acc_z);
     uint32_t* r = (uint32_t *) &Roll;
     uint32_t* p = (uint32_t *) &Pitch;
+
+    // Height /= N; 
+    uint32_t* z = (uint32_t *) &Height;
+
     AppData.Buffer[channel++] = *r >> 24;
     AppData.Buffer[channel++] = *r >> 16;
     AppData.Buffer[channel++] = *r >> 8;
@@ -508,7 +513,15 @@ static void PrepareTxFrame( void )
     AppData.Buffer[channel++] = *p >> 16;
     AppData.Buffer[channel++] = *p >> 8;
     AppData.Buffer[channel++] = *p >> 0;
+
+    AppData.Buffer[channel++] = *z >> 24;
+    AppData.Buffer[channel++] = *z >> 16;
+    AppData.Buffer[channel++] = *z >> 8;
+    AppData.Buffer[channel++] = *z >> 0;
     // AppData.Buffer[channel++] = Altitude >> 0;
+
+    Height = 0; 
+    N = 0;
 #endif    
 
     // Read the current voltage level
@@ -642,15 +655,22 @@ static void OnLed4TimerEvent( void* context )
 
     BoardGetAngle(&Roll, &Pitch);
 
-    printf("AX:%f ", AccX);
-    printf("AY:%f ", AccY);
-    printf("AZ:%f\r\n", AccZ);
-    printf("GX:%f ", gyr_x);
-    printf("GY:%f ", gyr_y);
-    printf("GZ:%f\r\n", gyr_z);
+    // printf("AX:%f ", AccX);
+    // printf("AY:%f ", AccY);
+    // printf("AZ:%f\r\n", AccZ);
+    // printf("GX:%f ", gyr_x);
+    // printf("GY:%f ", gyr_y);
+    // printf("GZ:%f\r\n", gyr_z);
     
-    printf("$K:%f %f %ld\r\n", (Roll), (Pitch), (0));
+    printf("$K:%f %f %f\r\n", (Roll), (Pitch), (AccZ));
     
+    //// The equation is Distance = (vi * t) + (1/2 * a * t2)
+    Height += (Velocity * 0.01) + (0.5 * ((AccZ - 1) * 9.81) * 0.01 * 0.01);
+    Velocity = ((AccZ - 1) * 9.81) * 0.01;
+    N++;
+
+    printf("$S:%f\r\n", (Velocity));
+    printf("$H:%f\r\n", (Height));
     // BoardGetIMUTemperature(&lTemperature);
     // imu_temperature = lTemperature;
 #endif

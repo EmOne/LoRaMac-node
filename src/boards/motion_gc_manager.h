@@ -29,7 +29,13 @@ extern "C" {
 #include "math.h"
 #include "stdio.h"
 #include "motion_gc.h"
+#if 1
 #include "c6dofimu9.h"
+#elif defined ( C6DOFIMU17 )
+#include "c6dofimu17.h"
+#elif defined ( INCLINOMETER )
+#include "inclinometer.h"
+#endif
 
 /* Extern variables ----------------------------------------------------------*/
 /* Exported Macros -----------------------------------------------------------*/

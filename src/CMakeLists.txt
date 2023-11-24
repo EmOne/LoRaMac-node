@@ -167,6 +167,15 @@ elseif(BOARD STREQUAL SKiM980A)
     # Configure radio
     set(RADIO sx1272 CACHE INTERNAL "Radio sx1272 selected")
 
+    # Configure sensor
+    if(SENSOR_ELEMENT STREQUAL C6DOFIMU9)
+        set(SENSOR C6DOFIMU9 CACHE INTERNAL "c6dofimu9 selected")
+    elseif(SENSOR_ELEMENT STREQUAL C6DOFIMU17 )
+        set(SENSOR C6DOFIMU9 CACHE INTERNAL "c6dofimu9 selected")
+    elseif(SENSOR_ELEMENT STREQUAL INCLINOMETER)
+        set(SENSOR INCLINOMETER CACHE INTERNAL "inclinometer selected")
+    endif()
+
 elseif(BOARD STREQUAL SKiM881AXL)
     # Configure toolchain for SKiM881AXL
     set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/boards/SKiM881AXL/cmsis/arm-gcc/stm32l081xx_flash.ld)

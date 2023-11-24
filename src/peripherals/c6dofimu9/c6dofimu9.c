@@ -767,7 +767,7 @@ void c6dofimu9_get_accel_data ( c6dofimu9_t *ctx, float *p_accel_x, float *p_acc
 	//Please adjust Accel X, Y, Z here
 	ctx->a.ax += 0.011;
 	ctx->a.ay += 0.010;
-	ctx->a.az += 0.021;
+	ctx->a.az += 0.019;
 
 	*p_accel_x = (float) ctx->a.ax;
 	*p_accel_y = (float) ctx->a.ay;

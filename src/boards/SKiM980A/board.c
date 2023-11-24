@@ -519,6 +519,8 @@ int BoardGetCapSenseStatus( uint8_t* cap )
 #if (USE_IMU == 1)
 float KalmanAngleRoll = 0, KalmanUncertanintyAngleRoll=2*2;
 float KalmanAnglePitch = 0, KalmanUncertanintyAnglePitch=2*2;
+float KalmanAngleZInertial = 0, KalmanUncertanintyZInertial=2*2;
+float kHeight = 0;
 float Kalman1DOutput[] = {0,0};
 
 void kalman_1d(float kS, float kU, const float kI, const float kM){
@@ -551,7 +553,7 @@ void BoardGetIMU( float* gyro_x ,float* gyro_y, float* gyro_z, float* accel_x ,f
 {
     float gyro_result[3];
     float accel_result[3];
-    float rad = (M_PI*90) / 2;
+    float rad = 1.567 * 90; //M_PI * 180;
     float accZInertial, AngleRoll, AnglePitch;
  
 #if 1 //defined(SENSOR_DATA_FROM_REGISTERS)
@@ -588,19 +590,22 @@ void BoardGetIMU( float* gyro_x ,float* gyro_y, float* gyro_z, float* accel_x ,f
     printf("kAngle roll:%f ", KalmanAngleRoll);
     printf("kAngle pitch:%f \r\n", KalmanAnglePitch);
 
-    accZInertial = -sin(AnglePitch * rad)
-							* (accel_result[0] + cos(AnglePitch * rad))
-							* sin(AngleRoll * rad) * (accel_result[1] + cos(AnglePitch * rad))
-							* cos(AngleRoll * rad) * accel_result[2];   
-  	accZInertial = accZInertial - 1 * 9.81;
-	c6dofimu9.a.AccZInertial = (float) accZInertial * 100;
+    accZInertial = -sin(KalmanAnglePitch * rad)
+							* (accel_result[0] + cos(KalmanAnglePitch * rad))
+							* sin(KalmanAngleRoll * rad) * (accel_result[1] + cos(KalmanAnglePitch * rad))
+							* cos(KalmanAngleRoll * rad) * accel_result[2];   
+  	// accZInertial = accZInertial - 1 * 9.81 * 100;
+    kalman_1d(KalmanAngleZInertial, KalmanUncertanintyZInertial, accel_result[2], accZInertial);
+    KalmanAngleZInertial = Kalman1DOutput[0];
+    KalmanUncertanintyZInertial = Kalman1DOutput[1];
+	c6dofimu9.a.AccZInertial = KalmanAngleZInertial + 0.251;
 
     *gyro_x = gyro_result[0];
     *gyro_y = gyro_result[1];
     *gyro_z = gyro_result[2];
     *accel_x = c6dofimu9.a.ax;
     *accel_y = c6dofimu9.a.ay;
-    *accel_z = c6dofimu9.a.az;
+    *accel_z = c6dofimu9.a.AccZInertial;
 }
 
 void BoardGetIMUTemperature(int32_t * temperature)
