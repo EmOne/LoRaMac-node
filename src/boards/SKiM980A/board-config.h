@@ -109,7 +109,7 @@ extern "C"
 #define IMU_CS                                      PB_12
 #define IMU_SYNC                                    PA_12
 #define IMU_INT                                     PA_8
-#define LED_2                                       PA_15
+#define LED_4                                       PA_15
 #else
 #define LED_1                                       PA_3
 #define LED_2                                       PA_0

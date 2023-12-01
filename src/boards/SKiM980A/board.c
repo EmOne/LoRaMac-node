@@ -184,7 +184,7 @@ void BoardInitMcu( void )
         GpioInit( &Led3, LED_3, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
         GpioInit( &Led4, LED_4, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
 #elif ( USE_IMU == 1 )
-        GpioInit( &Led2, LED_2, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+        GpioInit( &Led4, LED_4, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
 #endif
 
         SystemClockConfig( );
@@ -553,7 +553,7 @@ void BoardGetIMU( float* gyro_x ,float* gyro_y, float* gyro_z, float* accel_x ,f
 {
     float gyro_result[3];
     float accel_result[3];
-    float rad = 1.567 * 90; //M_PI * 180;
+    // float rad = (float) M_PI * 180; //M_PI * 180;
     float accZInertial, AngleRoll, AnglePitch;
  
 #if 1 //defined(SENSOR_DATA_FROM_REGISTERS)
@@ -573,8 +573,8 @@ void BoardGetIMU( float* gyro_x ,float* gyro_y, float* gyro_z, float* accel_x ,f
 
 #endif
 
-	AngleRoll = atanf(accel_result[1]/sqrtf((accel_result[0]*accel_result[0])+(accel_result[2]*accel_result[2]))) / 1.567 * 90;
-  	AnglePitch = -atanf(accel_result[0]/sqrtf((accel_result[1]*accel_result[1])+(accel_result[2]*accel_result[2]))) / 1.567 * 90;
+	AngleRoll = atanf(accel_result[1]/sqrtf((accel_result[0]*accel_result[0])+(accel_result[2]*accel_result[2]))) / M_PI * 180;
+  	AnglePitch = -atanf(accel_result[0]/sqrtf((accel_result[1]*accel_result[1])+(accel_result[2]*accel_result[2]))) / M_PI * 180;
     printf("Angle roll:%f ", AngleRoll);
     printf("Angle pitch:%f \r\n", AnglePitch);
 
@@ -590,10 +590,10 @@ void BoardGetIMU( float* gyro_x ,float* gyro_y, float* gyro_z, float* accel_x ,f
     printf("kAngle roll:%f ", KalmanAngleRoll);
     printf("kAngle pitch:%f \r\n", KalmanAnglePitch);
 
-    accZInertial = -sin(KalmanAnglePitch * rad)
-							* (accel_result[0] + cos(KalmanAnglePitch * rad))
-							* sin(KalmanAngleRoll * rad) * (accel_result[1] + cos(KalmanAnglePitch * rad))
-							* cos(KalmanAngleRoll * rad) * accel_result[2];   
+    accZInertial = -sin(KalmanAnglePitch * M_PI / 180)
+							* (accel_result[0] + cos(KalmanAnglePitch * M_PI / 180))
+							* sin(KalmanAngleRoll * M_PI / 180) * (accel_result[1] + cos(KalmanAnglePitch * M_PI / 180))
+							* cos(KalmanAngleRoll * M_PI / 180) * accel_result[2];   
   	// accZInertial = accZInertial - 1 * 9.81 * 100;
     kalman_1d(KalmanAngleZInertial, KalmanUncertanintyZInertial, accel_result[2], accZInertial);
     KalmanAngleZInertial = Kalman1DOutput[0];
