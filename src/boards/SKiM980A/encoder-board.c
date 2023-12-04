@@ -93,7 +93,7 @@ static void update_encoder(flow_t *enc, TIM_HandleTypeDef *htim) {
     
 	enc->fwd_cnt +=  enc->rate;
 	enc->last = temp_counter;
-	enc->position = temp_counter * 360 / 80;
+	enc->position = temp_counter * 360.0f / 80.0f;
 }
 
 void EncoderInit(Encoder_t *obj, EncoderId_t timId, PinNames pulse, PinNames dir, PinNames tampering, PinNames alarm, PinNames en)
@@ -315,9 +315,9 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 				--round_msb;
 			}
 		}
-        flow.fwd_cnt = (round_msb << 6 | counter);
-		last_counter = counter;
-        flow.position = counter / max_lsb;
+        // flow.fwd_cnt = (round_msb << 6 | counter);
+		// last_counter = counter;
+        // flow.position = counter / max_lsb;
         // current = HAL_GetTick(); //HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
         // float delta = (float) abs(current - flow.last);
 		// flow.rate = (uint32_t) ((1.0f / delta) * 1000.0f);
@@ -346,6 +346,14 @@ void OnPeriodElapsedCallback( void ) {
     // if (indx == 100)
     // {
         uwDirection = __HAL_TIM_DIRECTION_STATUS(&TimHandle);
+        if (uwDirection != GPIO_PIN_RESET)
+		{
+            flow.status |= DIR_FLAG;
+         
+		} else {
+            flow.status &= ~DIR_FLAG;
+         
+		}
         update_encoder(&flow, &TimHandle);
         counter = flow.fwd_cnt;
         position = flow.position;
