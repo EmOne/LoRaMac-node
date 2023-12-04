@@ -19,12 +19,14 @@
  * \author    Anol Paisal ( EmOne )
  */
 #include "stm32l1xx.h"
+#include "stm32l1xx_hal_tim.h"
 #include "utilities.h"
 #include "board.h"
 #include "gpio.h"
 #include "encoder-board.h"
 #include "math.h"
 #include "lpm-board.h"
+#include "stdlib.h"
 // #include "timer.h"
 
 // #define USE_GPIO
@@ -50,8 +52,8 @@ extern Gpio_t Led3;
 static uint8_t EncoderInitialized = 0;
 uint32_t uwDirection = 0;
 int16_t round_msb = 0;
-int32_t max_lsb = 79;
-int16_t counter = 0, last_counter = 0;
+int32_t max_lsb = 160;
+int32_t counter = 0, last_counter = 0;
 int position = 0, speed = 0;
 static int indx = 0;
 
@@ -73,27 +75,37 @@ static void update_encoder(flow_t *enc, TIM_HandleTypeDef *htim) {
 			if (__HAL_TIM_IS_TIM_COUNTING_DOWN(htim)) {
 				enc->rate = -enc->last
 						- (__HAL_TIM_GET_AUTORELOAD(htim) - temp_counter);
+                enc->status &= ~DIR_FLAG;
 			} else {
 				enc->rate = temp_counter - enc->last;
+                enc->status |= DIR_FLAG;
 			}
 		} else {
 			if (__HAL_TIM_IS_TIM_COUNTING_DOWN(htim)) {
 				enc->rate = temp_counter - enc->last;
+                enc->status &= ~DIR_FLAG;
 			} else {
 				enc->rate = temp_counter
 						+ (__HAL_TIM_GET_AUTORELOAD(htim) - enc->last);
+                enc->status |= DIR_FLAG;
 			}
 		}
 	}
+    
+    if(abs(enc->rate) > 120) 
+    {
+        enc->rate = enc->last_rate;
+    } 
 
     if (enc->rate < 0)
     {
         enc->rev_cnt += enc->rate;
     }
-    
+    counter = temp_counter;
 	enc->fwd_cnt +=  enc->rate;
 	enc->last = temp_counter;
-	enc->position = temp_counter * 360.0f / 80.0f;
+    enc->last_rate = enc->rate;
+	enc->position = (temp_counter) * 360.0f / max_lsb;
 }
 
 void EncoderInit(Encoder_t *obj, EncoderId_t timId, PinNames pulse, PinNames dir, PinNames tampering, PinNames alarm, PinNames en)
@@ -132,8 +144,8 @@ void EncoderInit(Encoder_t *obj, EncoderId_t timId, PinNames pulse, PinNames dir
             TimHandle.Instance = TIM2;
             TimHandle.Init.Prescaler = 0;
             TimHandle.Init.CounterMode = TIM_COUNTERMODE_UP;
-            TimHandle.Init.Period = max_lsb;
-            TimHandle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
+            TimHandle.Init.Period = max_lsb - 1;
+            TimHandle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
             sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
             sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
             sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
@@ -206,7 +218,7 @@ void OnTamperingIrq( void* context )
         	flow.status |= TAMPER_FLAG;
             printf( "\r\n###### ===== Tampering attached ==== ######\r\n\r\n" );
 #ifndef USE_GPIO
-		    HAL_TIM_Encoder_Start(&TimHandle, TIM_CHANNEL_ALL);
+		    HAL_TIM_Encoder_Start_IT(&TimHandle, TIM_CHANNEL_ALL);
             LpmSetStopMode(LPM_APPLI_ID, LPM_DISABLE);
             if (Encoder.OnShowPulseDetect != NULL)
             {
@@ -217,7 +229,7 @@ void OnTamperingIrq( void* context )
             flow.status &= ~TAMPER_FLAG;
 		    printf( "\r\n###### ===== Tampering released ==== ######\r\n\r\n" );
 #ifndef USE_GPIO
-            HAL_TIM_Encoder_Stop(&TimHandle, TIM_CHANNEL_ALL);
+            HAL_TIM_Encoder_Stop_IT(&TimHandle, TIM_CHANNEL_ALL);
             LpmSetStopMode(LPM_APPLI_ID, LPM_ENABLE);
              if (Encoder.OnArcRelease != NULL)
             {
@@ -295,34 +307,34 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 	CRITICAL_SECTION_BEGIN();
 	if (htim->Instance == TIM2) {
         // uint32_t current = 0;
-#if ( USE_GPIO )        
-        if (GpioRead(&Encoder.Direction) != GPIO_PIN_RESET)
-#else
-        uwDirection = __HAL_TIM_DIRECTION_STATUS(&TimHandle);
-        counter = (int32_t) __HAL_TIM_GET_COUNTER(htim);
-        if (uwDirection != GPIO_PIN_RESET)
-#endif /* USE_GPIO */
-		{
-            flow.status |= DIR_FLAG;
-            // printf( "\r\nForward cnt : %ld\r\n\r\n",  flow.fwd_cnt);
-            if (counter == 0 && last_counter == max_lsb ) {
-				++round_msb;
-			}
-		} else {
-            flow.status &= ~DIR_FLAG;
-            // printf( "\r\nBackward cnt : %ld\r\n\r\n",  flow.rev_cnt);
-            if (counter == max_lsb && last_counter == 0) {
-				--round_msb;
-			}
-		}
-        // flow.fwd_cnt = (round_msb << 6 | counter);
-		// last_counter = counter;
-        // flow.position = counter / max_lsb;
-        // current = HAL_GetTick(); //HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
-        // float delta = (float) abs(current - flow.last);
-		// flow.rate = (uint32_t) ((1.0f / delta) * 1000.0f);
-		// flow.last = HAL_GetTick();
-        // __NOP();
+// #if ( USE_GPIO )        
+//         if (GpioRead(&Encoder.Direction) != GPIO_PIN_RESET)
+// #else
+//         // uwDirection = __HAL_TIM_DIRECTION_STATUS(&TimHandle);
+//         // counter = (int32_t) __HAL_TIM_GET_COUNTER(htim);
+//         // if (uwDirection != GPIO_PIN_RESET)
+// #endif /* USE_GPIO */
+// 		{
+//             flow.status |= DIR_FLAG;
+//             // printf( "\r\nForward cnt : %ld\r\n\r\n",  flow.fwd_cnt);
+//             if (counter == 0 && last_counter == max_lsb ) {
+// 				++round_msb;
+// 			}
+// 		} else {
+//             flow.status &= ~DIR_FLAG;
+//             // printf( "\r\nBackward cnt : %ld\r\n\r\n",  flow.rev_cnt);
+//             if (counter == max_lsb && last_counter == 0) {
+// 				--round_msb;
+// 			}
+// 		}
+//         // flow.fwd_cnt = (round_msb << 6 | counter);
+// 		// last_counter = counter;
+//         // flow.position = counter / max_lsb;
+//         // current = HAL_GetTick(); //HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
+//         // float delta = (float) abs(current - flow.last);
+// 		// flow.rate = (uint32_t) ((1.0f / delta) * 1000.0f);
+// 		// flow.last = HAL_GetTick();
+//         // __NOP();
 	}
     
     if (Encoder.OnShowPulseDetect != NULL)
@@ -345,17 +357,17 @@ void OnPeriodElapsedCallback( void ) {
     // indx++;
     // if (indx == 100)
     // {
-        uwDirection = __HAL_TIM_DIRECTION_STATUS(&TimHandle);
-        if (uwDirection != GPIO_PIN_RESET)
-		{
-            flow.status |= DIR_FLAG;
+        // uwDirection = __HAL_TIM_DIRECTION_STATUS(&TimHandle);
+        // if (uwDirection != GPIO_PIN_RESET)
+		// {
+        //     flow.status |= DIR_FLAG;
          
-		} else {
-            flow.status &= ~DIR_FLAG;
+		// } else {
+        //     flow.status &= ~DIR_FLAG;
          
-		}
+		// }
         update_encoder(&flow, &TimHandle);
-        counter = flow.fwd_cnt;
+        
         position = flow.position;
         speed = flow.rate;
     //     indx = 0;

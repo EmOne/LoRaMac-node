@@ -41,6 +41,7 @@ typedef struct {
 	int32_t fwd_cnt;
 	int32_t rev_cnt;
 	int32_t rate;	//Speed degree per second
+	int32_t last_rate;
     uint8_t status; //[0:tampering, 1:alarm, 2:dir]
 	volatile uint16_t adc_lvl[3];
 	uint32_t adc_acc;

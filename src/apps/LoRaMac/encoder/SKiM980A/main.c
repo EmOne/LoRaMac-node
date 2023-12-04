@@ -395,11 +395,12 @@ static void PrepareTxFrame( uint8_t port )
             potiPercentage = BoardGetPotiLevel( );
             vdd = BoardGetBatteryLevel( );
             AppDataSizeBackup = AppDataSize = 11;
+            int32_t dat = flow.fwd_cnt + ( flow.fwd_cnt / 159 );
 #if 1
-            AppDataBuffer[0] = (flow.fwd_cnt >> 24) & 0xff;
-            AppDataBuffer[1] = (flow.fwd_cnt >> 16) & 0xff;
-            AppDataBuffer[2] = (flow.fwd_cnt >> 8) & 0xff;
-            AppDataBuffer[3] = (flow.fwd_cnt) & 0xff;
+            AppDataBuffer[0] = (dat >> 24) & 0xff;
+            AppDataBuffer[1] = (dat >> 16) & 0xff;
+            AppDataBuffer[2] = (dat >> 8) & 0xff;
+            AppDataBuffer[3] = (dat) & 0xff;
             AppDataBuffer[4] = (flow.position >> 8) & 0xff;
             AppDataBuffer[5] = (flow.position) & 0xff;
 #else
@@ -609,8 +610,8 @@ static void OnLed4Toggle( void )
 static void OnLed3Toggle( void )
 {
      // Switch LED 3 Toggle
-    // GpioToggle( &Led3 );
-    GpioWrite( &Led3, 1 );
+    GpioToggle( &Led3 );
+    //GpioWrite( &Led3, 1 );
     TimerStart( &Led3Timer );
     IsMacProcessPending = 1;
 }
@@ -1312,7 +1313,7 @@ int main( void )
                 TimerSetValue( &Led2Timer, 25 );
 
                TimerInit( &Led1Timer, OnLed1TimerEvent );
-               TimerSetValue( &Led1Timer, 1 );
+               TimerSetValue( &Led1Timer, 10 );
                TimerStart(&Led1Timer);
 
                 // TimerInit( &WdtTimer, OnWdtTimerEvent );
